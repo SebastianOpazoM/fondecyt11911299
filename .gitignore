@@ -1,0 +1,108 @@
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+.RDataTmp
+
+# User-specific files
+.Ruserdata
+
+# Example code in package build process
+*-Ex.R
+
+# Output files from R CMD build
+/*.tar.gz
+
+# Output files from R CMD check
+/*.Rcheck/
+
+# RStudio files
+.Rproj.user/
+*.Rproj
+
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+
+# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
+.httr-oauth
+
+# knitr and R markdown default cache directories
+*_cache/
+/cache/
+
+# Temporary files created by R markdown
+*.utf8.md
+*.knit.md
+
+# R Environment Variables
+.Renviron
+
+# pkgdown site
+docs/
+
+# translation temp files
+po/*~
+
+# RStudio Connect folder
+rsconnect/
+
+# Packrat
+packrat/lib*/
+packrat/src/
+
+# renv
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock.json.orig
+
+# Shiny token, see https://shiny.rstudio.com/articles/shinyapps.html
+rsconnect/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# SQL dump files (uncomment if you want to ignore SQL dumps)
+# *.sql
+# dump-*.sql
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*~
+*.tmp
+*.temp
+
+# Data files (uncomment if you want to ignore data files)
+# *.csv
+# *.xlsx
+# *.xls
+# data/
+
+# R project specific
+config.R
+output/
+*.Rproj
+
+# Data folder contents (selective ignoring)
+data/*.csv
+data/*.sql
