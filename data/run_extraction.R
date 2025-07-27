@@ -1,13 +1,26 @@
 #!/usr/bin/env Rscript
 
-# FONDECYT Data Extraction Runner
+# FONDECYT Data Extraction Runner (LEGACY - uses PostgreSQL)
 # Usage: Rscript run_extraction.R
+# Note: This script is deprecated. Use extract_local_data.R instead.
 
-cat("FONDECYT Data Extraction\n")
-cat("========================\n\n")
+cat("⚠️  LEGACY SCRIPT WARNING\n")
+cat("========================\n")
+cat("This script requires PostgreSQL setup and is no longer the main approach.\n")
+cat("For the current extraction method, use: extract_local_data.R\n\n")
 
-# Load the extraction script
-source("extract_data.R")
+cat("Do you want to continue with the PostgreSQL method? (y/N): ")
+response <- tolower(trimws(readLines("stdin", n=1)))
+
+if (response != "y" && response != "yes") {
+  cat("Switching to modern extraction method...\n\n")
+  source("extract_local_data.R")
+  main()
+  quit(save = "no")
+}
+
+cat("\nContinuing with PostgreSQL method...\n")
+cat("=====================================\n\n")
 
 # Check if required packages are installed
 required_packages <- c("DBI", "RPostgreSQL", "dplyr", "readr")
@@ -20,26 +33,27 @@ if(length(missing_packages) > 0) {
 
 # Load libraries
 library(DBI)
-library(RPostgreSQL)
+library(RPostgreSQL) 
 library(dplyr)
 library(readr)
 
 cat("📋 BEFORE RUNNING:\n")
-cat("1. Make sure you've edited the database credentials in extract_data.R\n")
-cat("2. Update the connect_to_postgres() function with your actual:\n")
-cat("   - host\n")
-cat("   - user\n") 
-cat("   - password\n\n")
+cat("1. Make sure PostgreSQL is set up (run setup_local_db.sh)\n")
+cat("2. Database should be running on localhost:5432\n")
+cat("3. Database name: fondecyt\n\n")
 
-cat("🚀 RUNNING EXTRACTION...\n")
+cat("🚀 RUNNING POSTGRESQL EXTRACTION...\n")
+
+# NOTE: This tries to use extract_data.R which no longer exists
+# This is kept for reference but will fail
 
 # Run the extraction
 tryCatch({
-  responses_data <- extract_item_responses("fondecyt_item_responses.csv")
-  cat("🎉 SUCCESS! Data saved to fondecyt_item_responses.csv\n")
+  cat("❌ ERROR: extract_data.R has been removed from this project.\n")
+  cat("Use extract_local_data.R instead for dump-based extraction.\n")
 }, error = function(e) {
   cat("❌ ERROR:", e$message, "\n")
-  cat("💡 Make sure your database credentials are correct!\n")
+  cat("💡 Use the modern extraction: source('extract_local_data.R'); main()\n")
 })
 
 cat("\n✅ Script complete!\n")

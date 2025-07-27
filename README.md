@@ -7,8 +7,8 @@ This repository contains data analysis scripts and extracted data for the FONDEC
 ```
 fondecyt11911299/
 ├── data/                          # Data extraction and raw data
-│   ├── extract_data.R            # Main extraction script
-│   ├── setup_local_db.sh         # Database setup
+│   ├── extract_local_data.R      # Main extraction script (SQL dump parsing)
+│   ├── setup_local_db.sh         # Optional PostgreSQL setup (not required)
 │   ├── item_responses.csv        # Extracted responses (621K rows)
 │   ├── dump-fondecyt-*.sql       # Original database dump
 │   └── README.md                 # Data documentation

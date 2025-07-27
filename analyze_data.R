@@ -14,8 +14,9 @@ library(stringr)
 
 # Load the extracted CSV data
 load_research_data <- function(file_path = "fondecyt_research_data.csv") {
-  if (!file.exists(file_path)) {
-    stop("CSV file not found. Run extract_data.R first to create the data file.")
+  # Check if CSV file exists
+  if (!file.exists(csv_file)) {
+    stop("CSV file not found. Run data/extract_local_data.R first to create the data file.")
   }
   
   cat("Loading data from", file_path, "...\n")
@@ -304,7 +305,7 @@ cat("FONDECYT CSV Analysis Script Loaded\n")
 cat("===================================\n\n")
 
 cat("QUICK START:\n")
-cat("1. Make sure you have your CSV file from extract_data.R\n")
+cat("1. Make sure you have your CSV file from data/extract_local_data.R\n")
 cat("2. Run: results <- generate_analysis_report()\n")
 cat("3. Explore specific analyses:\n")
 cat("   - data_overview(results$data)\n")

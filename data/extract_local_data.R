@@ -1,12 +1,84 @@
 # FONDECYT Local Data Extraction Script
-# Purpose: Extract data from the local SQL dump file (no remote database needed!)
-# Works with the dump-fondecyt-202507271125.sql file in your repo
+# Purpose: Extract data from SQL dump files (handles multiple/updated dumps!)
+# Automatically detects and works with any FONDECYT SQL dump in this folder
 
 library(DBI)
 library(RSQLite)
 library(dplyr)
 library(readr)
 library(stringr)
+
+# =============================================================================
+# DUMP FILE MANAGEMENT
+# =============================================================================
+
+# Function to find all SQL dump files in the current directory
+find_dump_files <- function(pattern = "dump.*fondecyt.*\\.sql$") {
+  dump_files <- list.files(".", pattern = pattern, ignore.case = TRUE)
+  return(dump_files)
+}
+
+# Function to get the most recent dump file
+get_latest_dump <- function(pattern = "dump.*fondecyt.*\\.sql$") {
+  dump_files <- find_dump_files(pattern)
+  
+  if (length(dump_files) == 0) {
+    cat("❌ No SQL dump files found matching pattern:", pattern, "\n")
+    cat("Expected files like: dump-fondecyt-YYYYMMDDHHMI.sql\n")
+    return(NULL)
+  }
+  
+  # Get file info to find the most recent
+  file_info <- file.info(dump_files)
+  file_info$filename <- rownames(file_info)
+  
+  # Sort by modification time (most recent first)
+  latest_file <- file_info[order(file_info$mtime, decreasing = TRUE), ]$filename[1]
+  
+  cat("📁 Found", length(dump_files), "dump file(s):\n")
+  for (i in 1:length(dump_files)) {
+    marker <- if (dump_files[i] == latest_file) "👉 " else "   "
+    cat(marker, dump_files[i], "\n")
+  }
+  
+  cat("\n✅ Using latest dump:", latest_file, "\n")
+  return(latest_file)
+}
+
+# Function to choose dump file interactively
+choose_dump_file <- function() {
+  dump_files <- find_dump_files()
+  
+  if (length(dump_files) == 0) {
+    cat("❌ No SQL dump files found in current directory\n")
+    return(NULL)
+  }
+  
+  if (length(dump_files) == 1) {
+    cat("📁 Using only available dump file:", dump_files[1], "\n")
+    return(dump_files[1])
+  }
+  
+  cat("📁 Multiple dump files found:\n")
+  for (i in 1:length(dump_files)) {
+    cat(i, ":", dump_files[i], "\n")
+  }
+  
+  cat("\nEnter number (1-", length(dump_files), ") or press Enter for latest: ")
+  choice <- readline()
+  
+  if (choice == "" || choice == "\n") {
+    return(get_latest_dump())
+  }
+  
+  choice_num <- as.numeric(choice)
+  if (is.na(choice_num) || choice_num < 1 || choice_num > length(dump_files)) {
+    cat("Invalid choice, using latest dump\n")
+    return(get_latest_dump())
+  }
+  
+  return(dump_files[choice_num])
+}
 
 # =============================================================================
 # OPTION 1: EXTRACT DATA DIRECTLY FROM SQL DUMP FILE
@@ -55,10 +127,42 @@ extract_table_from_dump <- function(dump_file, table_name) {
 }
 
 # Function to create a simple CSV from INSERT statements
-extract_item_responses_from_dump <- function(dump_file = "dump-fondecyt-202507271125.sql", 
-                                           output_file = "item_responses.csv") {
+extract_item_responses_from_dump <- function(dump_file = NULL, 
+                                           output_file = NULL,
+                                           auto_latest = TRUE) {
   
-  cat("🔍 Extracting item responses from SQL dump...\n")
+  # Auto-detect dump file if not specified
+  if (is.null(dump_file)) {
+    if (auto_latest) {
+      dump_file <- get_latest_dump()
+    } else {
+      dump_file <- choose_dump_file()
+    }
+    
+    if (is.null(dump_file)) {
+      return(NULL)
+    }
+  }
+  
+  # Auto-generate output filename if not specified
+  if (is.null(output_file)) {
+    # Extract date from filename if possible
+    date_match <- str_extract(dump_file, "\\d{12}")  # YYYYMMDDHHMI
+    if (!is.na(date_match)) {
+      output_file <- paste0("item_responses_", date_match, ".csv")
+    } else {
+      output_file <- paste0("item_responses_", format(Sys.Date(), "%Y%m%d"), ".csv")
+    }
+  }
+  
+  cat("🔍 Extracting item responses from:", dump_file, "\n")
+  cat("📁 Output file:", output_file, "\n\n")
+  
+  # Check if dump file exists
+  if (!file.exists(dump_file)) {
+    cat("❌ Dump file not found:", dump_file, "\n")
+    return(NULL)
+  }
   
   # Extract the measurement_itemresponse table
   table_data <- extract_table_from_dump(dump_file, "measurement_itemresponse")
@@ -73,7 +177,11 @@ extract_item_responses_from_dump <- function(dump_file = "dump-fondecyt-20250727
   # This is a simplified parser - might need adjustment based on actual data format
   all_rows <- list()
   
-  for (i in 1:min(length(table_data$insert_lines), 1000)) {  # Limit to first 1000 for testing
+  # Process all INSERT statements (not just first 1000)
+  total_inserts <- length(table_data$insert_lines)
+  process_count <- min(total_inserts, 10000)  # Process up to 10K for testing, increase as needed
+  
+  for (i in 1:process_count) {
     line <- table_data$insert_lines[i]
     
     # Extract values from INSERT statement
@@ -95,8 +203,8 @@ extract_item_responses_from_dump <- function(dump_file = "dump-fondecyt-20250727
       all_rows[[i]] <- values
     }
     
-    if (i %% 100 == 0) {
-      cat("Processed", i, "rows...\n")
+    if (i %% 1000 == 0) {
+      cat("Processed", i, "/", process_count, "rows (", round(i/process_count*100, 1), "%)\n")
     }
   }
   
@@ -130,6 +238,19 @@ extract_item_responses_from_dump <- function(dump_file = "dump-fondecyt-20250727
   cat("✅ Extracted", nrow(df), "rows to", output_file, "\n")
   cat("📋 Preview:\n")
   print(head(df, 3))
+  
+  # Create metadata file
+  metadata_file <- str_replace(output_file, "\\.csv$", "_metadata.txt")
+  writeLines(c(
+    paste("Source dump file:", dump_file),
+    paste("Extraction date:", Sys.time()),
+    paste("Rows extracted:", nrow(df)),
+    paste("Columns:", ncol(df)),
+    paste("File size:", file.size(dump_file), "bytes"),
+    paste("Output file:", output_file)
+  ), metadata_file)
+  
+  cat("📄 Metadata saved to:", metadata_file, "\n")
   
   return(df)
 }
@@ -230,13 +351,14 @@ setup_local_postgres <- function() {
   cat("   createdb fondecyt_local\n")
   cat("   psql fondecyt_local < dump-fondecyt-202507271125.sql\n\n")
   
-  cat("3. Then update extract_data.R to connect to localhost:\n")
+  cat("3. Use database-based approach if needed for complex queries\n")
+  cat("   (Note: This project now uses direct dump parsing)\n")
   cat("   host = 'localhost'\n")
   cat("   dbname = 'fondecyt_local'\n")
   cat("   user = 'your_local_username'\n")
   cat("   password = 'your_local_password'\n\n")
   
-  cat("This gives you the full PostgreSQL functionality!\n")
+  cat("But the current approach (direct parsing) is simpler!\n")
 }
 
 # =============================================================================
@@ -265,10 +387,59 @@ extract_data_from_local_dump <- function() {
 # USAGE
 # =============================================================================
 
+# Main execution
+main <- function() {
+  cat("🚀 FONDECYT Data Extraction Tool\n")
+  cat("================================\n\n")
+  
+  # Find available dump files
+  dump_files <- find_dump_files()
+  
+  if (length(dump_files) == 0) {
+    cat("❌ No FONDECYT dump files found in current directory\n")
+    cat("   Looking for files matching pattern: dump.*fondecyt.*\\.sql$\n")
+    return(invisible(NULL))
+  }
+  
+  cat("📁 Found", length(dump_files), "dump file(s):\n")
+  for (i in seq_along(dump_files)) {
+    file_info <- file.info(dump_files[i])
+    cat("  ", i, ".", basename(dump_files[i]), 
+        "(", format(file_info$size, units = "MB"), ",", 
+        "modified:", format(file_info$mtime, "%Y-%m-%d %H:%M"), ")\n")
+  }
+  cat("\n")
+  
+  # Extract data using auto-detection (latest file by default)
+  result <- extract_item_responses_from_dump()
+  
+  if (!is.null(result)) {
+    cat("\n🎉 Extraction completed successfully!\n")
+    cat("You can now use the CSV file for analysis in R or other tools.\n")
+  } else {
+    cat("\n❌ Extraction failed. Please check the dump file and try again.\n")
+  }
+}
+
 cat("FONDECYT Local Data Extraction Script Loaded\n")
 cat("===========================================\n\n")
 
-extract_data_from_local_dump()
+cat("📋 Available functions:\n")
+cat("• find_dump_files()                     - Find all FONDECYT dump files\n")
+cat("• get_latest_dump()                     - Get the most recent dump file\n")
+cat("• choose_dump_file()                    - Interactively choose a dump file\n")
+cat("• extract_item_responses_from_dump()    - Extract data (auto-detects latest file)\n")
+cat("• main()                                - Run complete extraction workflow\n\n")
 
-cat("\n🚀 Quick start:\n")
-cat("data <- extract_item_responses_from_dump()\n")
+cat("🚀 Quick start examples:\n")
+cat("# Auto-extract from latest dump:\n")
+cat("result <- extract_item_responses_from_dump()\n\n")
+cat("# Choose specific dump file:\n")
+cat("result <- extract_item_responses_from_dump(auto_latest = FALSE)\n\n")
+cat("# Run complete workflow:\n")
+cat("main()\n\n")
+
+# Run if script is called directly
+if (!interactive()) {
+  main()
+}

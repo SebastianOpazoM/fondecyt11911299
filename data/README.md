@@ -5,10 +5,9 @@ This folder contains all data extraction scripts and raw data files for the FOND
 ## 📁 **Folder Contents:**
 
 ### **Scripts:**
-- `extract_data.R` - Main data extraction script (connects to PostgreSQL)
-- `extract_local_data.R` - Alternative extraction methods (direct from dump)
-- `run_extraction.R` - Automated runner script
-- `setup_local_db.sh` - Sets up local PostgreSQL database from dump
+- `extract_local_data.R` - Main data extraction script (parses SQL dumps directly)
+- `run_extraction.R` - Automated runner script (legacy, uses PostgreSQL)
+- `setup_local_db.sh` - Optional PostgreSQL setup (not required for main workflow)
 
 ### **Data Files:**
 - `dump-fondecyt-202507271125.sql` - Original PostgreSQL database dump (197MB)
@@ -33,11 +32,16 @@ cd data
 Rscript run_extraction.R
 ```
 
-### **Option 3: Extract from R**
+### **Extract Data Using R**
 ```r
 # From the data folder
-source("extract_data.R")
-data <- extract_item_responses("new_responses.csv")
+source("extract_local_data.R")
+
+# Auto-extract from latest dump
+data <- extract_item_responses_from_dump()
+
+# Or run complete workflow with file discovery
+main()
 ```
 
 ## 📊 **Data Structure:**
@@ -65,21 +69,19 @@ The PostgreSQL database contains 61 tables including:
 - `measurement_researchstudy` - Research studies
 - `measurement_researchsubject` - Study participants
 
-## 💡 **Adding Related Data:**
+## � **For Complex Queries (Optional):**
 
-To extend the current dataset with related information, modify the query in `extract_data.R`:
+If you need to run complex SQL queries across multiple tables, you can still set up PostgreSQL:
 
-```sql
--- Example: Add item text and measure names
-SELECT 
-  ir.*,
-  i.text as item_text,
-  m.name as measure_name
-FROM measurement_itemresponse ir
-LEFT JOIN measurement_item i ON ir.item_id = i.id
-LEFT JOIN measurement_measureadministration ma ON ir.administration_id = ma.id
-LEFT JOIN measurement_measure m ON ma.measure_id = m.id
+```bash
+# Set up local database (optional)
+./setup_local_db.sh
+
+# Then use psql for complex queries
+psql fondecyt -c "SELECT * FROM measurement_itemresponse LIMIT 5;"
 ```
+
+To extend the current dataset with related information, you would need to modify the parsing logic in `extract_local_data.R` or use the PostgreSQL approach for complex joins.
 
 ## ⚠️ **Important Notes:**
 

@@ -1,10 +1,19 @@
 #!/bin/bash
 
-# FONDECYT Local Database Setup
+# FONDECYT Local Database Setup (OPTIONAL)
 # This script sets up a local PostgreSQL database from your SQL dump
+# NOTE: This is not required for the main extraction workflow!
+# The project now uses direct SQL dump parsing via extract_local_data.R
 
-echo "🐘 FONDECYT Local Database Setup"
-echo "================================"
+echo "🐘 FONDECYT Local Database Setup (OPTIONAL)"
+echo "==========================================="
+echo "⚠️  This setup is NOT REQUIRED for the main workflow!"
+echo "The project now uses direct dump parsing (extract_local_data.R)"
+echo ""
+echo "Continue only if you need PostgreSQL for complex queries."
+echo "Press Ctrl+C to cancel, or Enter to continue..."
+read -r
+
 echo ""
 
 # Check if PostgreSQL is installed
@@ -55,10 +64,11 @@ if [ $? -eq 0 ]; then
     echo "📈 Sample data count:"
     psql fondecyt_local -c "SELECT COUNT(*) as total_item_responses FROM measurement_itemresponse;"
     echo ""
-    echo "🚀 Now you can use extract_data.R with these local credentials:"
-    echo "   host = 'localhost'"
-    echo "   dbname = 'fondecyt_local'"
-    echo "   user = '$(whoami)'"
+    echo "🚀 Database is ready for complex SQL queries:"
+    echo "   psql fondecyt_local"
+    echo ""
+    echo "💡 For simple extraction, use extract_local_data.R instead!"
+    echo "   (No database setup required)"
     echo "   password = ''  # Usually empty for local setup"
 else
     echo "❌ Database import failed"
