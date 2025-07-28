@@ -12,31 +12,37 @@ fondecyt11911299/
 │   ├── item_responses.csv        # Extracted responses (621K rows)
 │   ├── dump-fondecyt-*.sql       # Original database dump
 │   └── README.md                 # Data documentation
-├── analyze_data.R                # CSV-based analysis script
+├── analyze_data.Rmd              # Main analysis notebook (R Markdown)
+├── analyze_data_backup.R         # Legacy R script (backup)
 ├── .gitignore                    # Git ignore rules
 └── README.md                     # This file
 ```
 
 ## 🚀 **Quick Start:**
 
-### **1. Load and Analyze Data:**
+### **1. Analysis with R Markdown (Recommended):**
+```r
+# Open the analysis notebook in RStudio or VS Code
+# File: analyze_data.Rmd
+# Click "Knit" to generate HTML report with visualizations
+```
+
+### **2. Quick Data Loading:**
 ```r
 # Load the extracted data
 library(readr)
 data <- read_csv("data/item_responses.csv")
 
-# Run analysis
-source("analyze_data.R")
-results <- generate_analysis_report("data/item_responses.csv")
+# Basic exploration
+str(data)
+summary(data)
 ```
 
-### **2. Re-extract Data (if needed):**
-```bash
-# Set up local database
-cd data && ./setup_local_db.sh
-
-# Extract fresh data
-Rscript run_extraction.R
+### **3. Re-extract Data (if needed):**
+```r
+# Extract from SQL dump (no database setup required)
+source("data/extract_local_data.R")
+main()
 ```
 
 ## 📊 **Data Overview:**
