@@ -4,8 +4,6 @@ This repository contains data analysis scripts and extracted data for NODAL rese
 
 Here is the full version of the **NODAL Data Use Agreement** formatted for direct use in **RMarkdown**. You can paste this into an `.Rmd` file without issues. I’ve used Markdown headers and indentation for clarity and compatibility:
 
-```markdown
-
 # 🔒 Terms of Use and Research Agreement 
 
 **Please read carefully before accessing or using any NODAL data.**
@@ -76,7 +74,7 @@ You are expected to inform Paula Errázuriz of any publication, presentation, or
 ---
 
 If you have any questions about these terms or your intended use, please contact paulae@uc.cl.
-```
+
 
 ## 📁 **Project Structure:**
 
