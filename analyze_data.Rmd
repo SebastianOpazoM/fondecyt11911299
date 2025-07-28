@@ -82,7 +82,7 @@ base_descriptions <- list(
   "admin_is_completed" = "Boolean indicating if the administration session was completed",
   "admin_original_administration_date" = "Original scheduled date for the administration",
   "subject_id" = "Unique identifier for the research subject who provided responses",
-  "subject_type" = "Type/category of the research subject",
+  "subject_type" = "Type/category of the research subject (0 = Patient, 1 = Therapist)",
   "subject_study_site_id" = "Study site identifier where the subject participated",
   "follow_up_id" = "Identifier linking to followup session record",
   "followup_session_number" = "Sequential session number for the participant",
