@@ -1,8 +1,8 @@
-# FONDECYT Complete Data Extraction Pipeline Documentation
+# FONDECYT 1191299 + Psychotherapy Feedback Study - Complete Data Extraction Pipeline Documentation
 
 ## Overview
 
-The `extract_basic_responses.R` script is a comprehensive data extraction pipeline that processes PostgreSQL database dumps from the FONDECYT research project. It extracts item responses and enhances them with metadata from multiple related tables, creating a complete dataset for analysis.
+The `extract_basic_responses.R` script is a comprehensive data extraction pipeline that processes PostgreSQL database dumps from the FONDECYT 1191299 + Psychotherapy Feedback Study research project software (MindKey). It extracts item responses and enhances them with metadata from multiple related tables, creating a complete dataset for analysis.
 
 ## Script Purpose
 
