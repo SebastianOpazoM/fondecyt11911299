@@ -1,6 +1,82 @@
-# FONDECYT Research Project 11911299
+# NODAL data base
 
-This repository contains data analysis scripts and extracted data for the FONDECYT research project.
+This repository contains data analysis scripts and extracted data for NODAL research projects.
+
+Here is the full version of the **NODAL Data Use Agreement** formatted for direct use in **RMarkdown**. You can paste this into an `.Rmd` file without issues. I’ve used Markdown headers and indentation for clarity and compatibility:
+
+```markdown
+
+# 🔒 Terms of Use and Research Agreement 
+
+**Please read carefully before accessing or using any NODAL data.**
+
+The NODAL database contains data from multiple research projects led by Paula Errázuriz, with funding provided by institutions such as ANID, MIDAP, and the mental health NGO PsiConecta. Numerous team members have contributed to the design, funding, collection, and preparation of these data under the supervision of Paula Errázuriz and Sebastián Opazo.
+
+All data collection procedures have been approved by the Ethics Review Board of the Pontificia Universidad Católica de Chile, and participants provided informed consent. Because of this, strict ethical, legal, and academic standards must be upheld by anyone using these data.
+
+By requesting or using data from NODAL, you agree to the following terms:
+
+---
+
+## 1. Prior Approval Required
+
+Before accessing or analyzing any portion of the NODAL data, you must obtain written authorization from Paula Errázuriz. Please provide a brief outline of your research project, including:
+
+- Research questions or hypotheses  
+- Variables you intend to use  
+- Planned outputs (e.g., thesis, article, conference presentation)
+
+📧 Send your request to: paulae@uc.cl
+
+---
+
+## 2. Authorship and Acknowledgment
+
+Any publication, thesis, conference presentation, report, or other product that uses NODAL data must include Paula Errázuriz as a co-author.
+
+In some cases, other team members (e.g., Sebastián Opazo or other collaborators) may also need to be included as co-authors, depending on their contribution to the data. You must discuss and confirm authorship expectations with Paula before submitting or disseminating any work.
+
+---
+
+## 3. Acknowledgment of Funding Sources
+
+All dissemination products must include proper acknowledgment of the institutions that supported the NODAL database, including:
+
+- ANID  
+- MIDAP  
+- PsiConecta  
+- Any other funding source relevant to the specific dataset used
+
+The exact wording should be approved by Paula Errázuriz.
+
+---
+
+## 4. Special Conditions for Students and Assistants
+
+If you are a student or research assistant working under the supervision of Errázuriz, you may be subject to additional guidelines regarding data use, authorship, or supervision. You must consult with her before using any NODAL data.
+
+---
+
+## 5. Confidentiality and Data Protection
+
+All users must strictly adhere to ethical guidelines regarding participant confidentiality. No identifiable information may be disclosed under any circumstances. You are responsible for ensuring the secure storage and handling of the data at all times.
+
+---
+
+## 6. No Redistribution Without Permission
+
+You may not share, copy, or distribute the dataset(s) or any portion thereof to third parties without explicit, written permission from Paula Errázuriz.
+
+---
+
+## 7. Reporting and Communication
+
+You are expected to inform Paula Errázuriz of any publication, presentation, or project completion that uses NODAL data and to send her a copy of the final product. 
+
+---
+
+If you have any questions about these terms or your intended use, please contact paulae@uc.cl.
+```
 
 ## 📁 **Project Structure:**
 
@@ -44,13 +120,6 @@ summary(data)
 source("data/extract_local_data.R")
 main()
 ```
-
-## 📊 **Data Overview:**
-
-- **621,392 item responses** from research assessments
-- **Date range:** 2020-2025
-- **Response types:** Numeric and character responses
-- **Source:** PostgreSQL database dump (197MB)
 
 ## 🔧 **Dependencies:**
 
