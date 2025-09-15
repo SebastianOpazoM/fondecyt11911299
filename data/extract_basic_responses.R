@@ -1,6 +1,12 @@
 # FONDECYT Complete Data Extraction Pipeline
 # This script extracts and enhances the complete FONDECYT dataset with all metadata layers
-# From basic item responses through item, administration, subject, and followup metadata
+# From basic item responses through item, administration, subject, and session metadata
+#
+# MEASURE EXCLUSION FEATURE:
+# The pipeline now includes automatic exclusion of specific measures from analysis.
+# Excluded measures: 34, 29, 28, 27, 26, 24, 23, 22, 21, 8
+# This filtering occurs at the item response level to ensure excluded data is removed
+# from all subsequent analysis steps. Approximately 1.7% of responses are excluded.
 
 # Load required libraries
 suppressPackageStartupMessages({
@@ -9,8 +15,8 @@ suppressPackageStartupMessages({
   library(stringr)
 })
 
-# Function to extract item responses from SQL dump
-extract_item_responses <- function(sql_file) {
+# Function to extract item responses from SQL dump with measure exclusion
+extract_item_responses <- function(sql_file, excluded_measure_ids = c(34, 29, 28, 27, 26, 24, 23, 22, 21, 8)) {
   cat("📋 Extracting item responses from SQL dump...\n")
   
   # Read the SQL file
@@ -84,17 +90,6 @@ extract_item_responses <- function(sql_file) {
         tolower(trimws(as.character(was_skipped))) %in% c("t", "true", "1") ~ TRUE,
         tolower(trimws(as.character(was_skipped))) %in% c("f", "false", "0") ~ FALSE,
         TRUE ~ NA
-      ),
-      # Create unified response value and type columns
-      response_value = case_when(
-        !is.na(numeric_value) ~ as.character(numeric_value),
-        !is.na(character_value) & character_value != "" ~ as.character(character_value),
-        TRUE ~ NA_character_
-      ),
-      response_type = case_when(
-        !is.na(numeric_value) ~ "numeric",
-        !is.na(character_value) & character_value != "" ~ "character",
-        TRUE ~ "missing"
       )
     ) %>%
     rename(
@@ -103,7 +98,35 @@ extract_item_responses <- function(sql_file) {
       response_updated = last_edit_datetime
     )
   
-  cat("✅ Processed", nrow(item_responses), "item response records\n")
+  # Apply measure exclusion filtering if requested
+  if (length(excluded_measure_ids) > 0) {
+    cat("\n🔍 Applying measure exclusion filter...\n")
+    cat("📋 Excluding", length(excluded_measure_ids), "measures:", paste(excluded_measure_ids, collapse = ", "), "\n")
+    
+    # Extract item metadata for filtering
+    cat("🔗 Extracting item metadata for filtering...\n")
+    item_metadata <- extract_item_data(sql_file)
+    
+    # Get item IDs that belong to excluded measures
+    excluded_items <- item_metadata %>%
+      filter(item_measure_id %in% excluded_measure_ids) %>%
+      pull(item_id)
+    
+    cat("🚫 Found", length(excluded_items), "items to exclude from", length(excluded_measure_ids), "measures\n")
+    
+    # Filter out responses from excluded items
+    original_count <- nrow(item_responses)
+    item_responses <- item_responses %>%
+      filter(!item_id %in% excluded_items)
+    
+    excluded_count <- original_count - nrow(item_responses)
+    exclusion_rate <- round(excluded_count / original_count * 100, 1)
+    
+    cat("✅ Excluded", excluded_count, "responses (", exclusion_rate, "%) from excluded measures\n")
+    cat("📊 Remaining", nrow(item_responses), "responses for analysis\n")
+  }
+
+  cat("✅ Processed", nrow(item_responses), "item response records after exclusions\n")
   return(item_responses)
 }
 
@@ -165,6 +188,90 @@ extract_item_data <- function(sql_file) {
   return(item_data)
 }
 
+# Function to extract measure metadata from SQL dump
+extract_measure_data <- function(sql_file) {
+  cat("📋 Extracting measure metadata from SQL dump...\n")
+  
+  # Read the SQL file
+  sql_content <- readLines(sql_file, warn = FALSE)
+  
+  # Find the COPY statement for measurement_measure
+  copy_lines <- grep("^COPY public\\.measurement_measure", sql_content)
+  
+  if (length(copy_lines) == 0) {
+    stop("❌ Could not find measurement_measure COPY statement in SQL dump")
+  }
+  
+  # Use the first COPY statement
+  copy_start <- copy_lines[1]
+  cat("✅ Found measure COPY statement at line", copy_start, "\n")
+  
+  # Extract column names from COPY statement
+  copy_line <- sql_content[copy_start]
+  columns_match <- str_match(copy_line, "\\((.*?)\\)")
+  column_names <- trimws(strsplit(columns_match[1,2], ",")[[1]])
+  
+  # Find data rows
+  data_start <- copy_start + 1
+  data_end <- grep("^\\\\\\.$", sql_content[data_start:length(sql_content)])[1] + data_start - 2
+  
+  # Extract data rows
+  data_rows <- sql_content[data_start:data_end]
+  
+  # Create temp file and use readr for efficient parsing
+  temp_file <- tempfile(fileext = ".tsv")
+  writeLines(c(paste(column_names, collapse = "\t"), data_rows), temp_file)
+  
+  measure_data <- read_tsv(temp_file, 
+                          na = c("\\N", ""),
+                          show_col_types = FALSE,
+                          locale = locale(encoding = "UTF-8"))
+  
+  unlink(temp_file)
+  
+  # Convert data types and select relevant columns
+  measure_data <- measure_data %>%
+    mutate(
+      id = as.integer(id),
+      cutoff_score = as.numeric(cutoff_score),
+      sensitivity = as.numeric(sensitivity),
+      specificity = as.numeric(specificity),
+      is_active = case_when(
+        tolower(trimws(as.character(is_active))) %in% c("t", "true", "1") ~ TRUE,
+        tolower(trimws(as.character(is_active))) %in% c("f", "false", "0") ~ FALSE,
+        TRUE ~ NA
+      ),
+      post_session_measure = case_when(
+        tolower(trimws(as.character(post_session_measure))) %in% c("t", "true", "1") ~ TRUE,
+        tolower(trimws(as.character(post_session_measure))) %in% c("f", "false", "0") ~ FALSE,
+        TRUE ~ NA
+      ),
+      pre_session_measure = case_when(
+        tolower(trimws(as.character(pre_session_measure))) %in% c("t", "true", "1") ~ TRUE,
+        tolower(trimws(as.character(pre_session_measure))) %in% c("f", "false", "0") ~ FALSE,
+        TRUE ~ NA
+      )
+    ) %>%
+    select(
+      measure_id = id,
+      measure_title = title,
+      measure_description = description,
+      measure_label = label,
+      measure_is_active = is_active,
+      measure_cutoff_score = cutoff_score,
+      measure_sensitivity = sensitivity,
+      measure_specificity = specificity,
+      measure_post_session = post_session_measure,
+      measure_pre_session = pre_session_measure,
+      measure_area_id = measurement_area_id
+    ) %>%
+    filter(!is.na(measure_id)) %>%
+    arrange(measure_id)
+  
+  cat("✅ Processed", nrow(measure_data), "measure records\n")
+  return(measure_data)
+}
+
 # Function to extract administration data from SQL dump
 extract_administration_data <- function(sql_file) {
   cat("📋 Extracting administration data from SQL dump...\n")
@@ -215,8 +322,7 @@ extract_administration_data <- function(sql_file) {
       admin_end_datetime = end_datetime,
       admin_is_completed = is_completed,
       admin_subject_id = subject_id,
-      admin_original_administration_date = original_administration_date,
-      follow_up_id = follow_up_id
+      session_id = follow_up_id
     ) %>%
     filter(!is.na(administration_id))
   
@@ -279,9 +385,9 @@ extract_subject_data <- function(sql_file) {
   return(subject_data)
 }
 
-# Function to extract followup data from SQL dump
-extract_followup_data <- function(sql_file) {
-  cat("📋 Extracting followup data from SQL dump...\n")
+# Function to extract session data from SQL dump
+extract_session_data <- function(sql_file) {
+  cat("📋 Extracting session data from SQL dump...\n")
   
   # Read the SQL file
   sql_content <- readLines(sql_file, warn = FALSE)
@@ -295,7 +401,7 @@ extract_followup_data <- function(sql_file) {
   
   # Use the first COPY statement
   copy_start <- copy_lines[1]
-  cat("✅ Found followup COPY statement at line", copy_start, "\n")
+  cat("✅ Found session COPY statement at line", copy_start, "\n")
   
   # Extract column names from COPY statement
   copy_line <- sql_content[copy_start]
@@ -324,16 +430,16 @@ extract_followup_data <- function(sql_file) {
   followup_data <- followup_data %>%
     mutate(id = as.integer(id)) %>%
     select(
-      followup_id = id,
-      followup_session_number = session_number,
-      followup_attendance_status = attendance_status,
-      followup_session_modality = session_modality,
-      followup_therapist_id = therapist_id,
-      followup_comments = comments
+      session_id = id,
+      session_number = session_number,
+      session_attendance_status = attendance_status,
+      session_modality = session_modality,
+      session_therapist_id = therapist_id,
+      session_comments = comments
     ) %>%
-    filter(!is.na(followup_id))
+    filter(!is.na(session_id))
   
-  cat("✅ Processed", nrow(followup_data), "followup records\n")
+  cat("✅ Processed", nrow(followup_data), "session records\n")
   return(followup_data)
 }
 
@@ -399,12 +505,12 @@ main <- function() {
   cat("============================================\n")
   
   # Define file paths
-  sql_file <- "dump-fondecyt-202507271125.sql"  # SQL dump in same directory
-  basic_file <- "item_responses.csv"
-  item_file <- "item_responses_202507271125.csv"
-  admin_file <- "item_responses_with_admin_202507271125.csv"
-  subject_file <- "item_responses_full_metadata_202507271125.csv"
-  complete_file <- "item_responses_complete_202507271125.csv"
+  sql_file <- "data/dump-fondecyt-202507271125.sql"  # SQL dump in data directory
+  basic_file <- "data/item_responses.csv"
+  item_file <- "data/item_responses_202507271125.csv"
+  admin_file <- "data/item_responses_with_admin_202507271125.csv"
+  subject_file <- "data/item_responses_full_metadata_202507271125.csv"
+  complete_file <- "data/item_responses_complete_202507271125.csv"
   
   # Check if SQL dump exists
   if (!file.exists(sql_file)) {
@@ -455,9 +561,9 @@ main <- function() {
   cat("==================================\n")
   subject_data <- extract_subject_data(sql_file)
   
-  # Add original administration date and subject linking
+  # Add subject linking
   enhanced_data <- enhanced_data %>%
-    left_join(admin_data %>% select(administration_id, admin_subject_id, admin_original_administration_date), 
+    left_join(admin_data %>% select(administration_id, admin_subject_id), 
               by = "administration_id") %>%
     left_join(subject_data, by = c("admin_subject_id" = "subject_id"))
   
@@ -476,53 +582,21 @@ main <- function() {
   # Step 5: Add followup metadata
   cat("\n� STEP 5: Adding Followup Metadata\n")
   cat("===================================\n")
-  followup_data <- extract_followup_data(sql_file)
+  followup_data <- extract_session_data(sql_file)
   therapist_data <- extract_therapist_data(sql_file)
   
-  # Prepare followup data with therapist names
-  followup_selected <- followup_data
+  # Prepare session data - keep therapist_id as numeric
+  followup_selected <- followup_data %>%
+    rename(session_therapist = session_therapist_id)
   
-  if (nrow(therapist_data) > 0) {
-    followup_selected <- followup_selected %>%
-      left_join(
-        therapist_data %>%
-          select(
-            followup_therapist_id = id,
-            followup_therapist_first_name = first_name,
-            followup_therapist_last_name = last_name
-          ),
-        by = "followup_therapist_id"
-      ) %>%
-      mutate(
-        followup_therapist = case_when(
-          !is.na(followup_therapist_first_name) & !is.na(followup_therapist_last_name) ~
-            paste(followup_therapist_first_name, followup_therapist_last_name),
-          !is.na(followup_therapist_first_name) ~ followup_therapist_first_name,
-          !is.na(followup_therapist_last_name) ~ followup_therapist_last_name,
-          !is.na(followup_therapist_id) ~ paste("User ID:", followup_therapist_id),
-          TRUE ~ NA_character_
-        )
-      ) %>%
-      select(-followup_therapist_first_name, -followup_therapist_last_name, -followup_therapist_id)
-  } else {
-    followup_selected <- followup_selected %>%
-      mutate(
-        followup_therapist = case_when(
-          !is.na(followup_therapist_id) ~ paste("User ID:", followup_therapist_id),
-          TRUE ~ NA_character_
-        )
-      ) %>%
-      select(-followup_therapist_id)
-  }
-  
-  # Add followup data to main dataset
+  # Add session data to main dataset
   enhanced_data <- enhanced_data %>%
-    left_join(admin_data %>% select(administration_id, follow_up_id), by = "administration_id") %>%
-    left_join(followup_selected, by = c("follow_up_id" = "followup_id"))
+    left_join(admin_data %>% select(administration_id, session_id), by = "administration_id") %>%
+    left_join(followup_selected, by = c("session_id" = "session_id"))
   
-  followup_join_count <- sum(!is.na(enhanced_data$follow_up_id))
-  followup_join_rate <- round(followup_join_count / nrow(enhanced_data) * 100, 1)
-  cat("🔗 Followup join rate:", followup_join_rate, "% (", followup_join_count, "out of", nrow(enhanced_data), "responses)\n")
+  session_join_count <- sum(!is.na(enhanced_data$session_id))
+  session_join_rate <- round(session_join_count / nrow(enhanced_data) * 100, 1)
+  cat("🔗 Session join rate:", session_join_rate, "% (", session_join_count, "out of", nrow(enhanced_data), "responses)\n")
   
   write_csv(enhanced_data, complete_file)
   cat("💾 Saved complete dataset:", complete_file, "\n")
@@ -537,14 +611,14 @@ main <- function() {
   cat("   Item metadata:     ", round(sum(!is.na(enhanced_data$item_label)) / nrow(enhanced_data) * 100, 1), "%\n")
   cat("   Administration:    ", round(sum(!is.na(enhanced_data$admin_start_datetime)) / nrow(enhanced_data) * 100, 1), "%\n")
   cat("   Subject metadata:  ", round(sum(!is.na(enhanced_data$subject_type)) / nrow(enhanced_data) * 100, 1), "%\n")
-  cat("   Followup sessions: ", round(sum(!is.na(enhanced_data$follow_up_id)) / nrow(enhanced_data) * 100, 1), "%\n")
+  cat("   Session data:      ", round(sum(!is.na(enhanced_data$session_id)) / nrow(enhanced_data) * 100, 1), "%\n")
   
   cat("\n📁 Generated Files:\n")
   cat("   Basic dataset:     ", basic_file, "\n")
   cat("   + Item metadata:   ", item_file, "\n")
   cat("   + Administration:  ", admin_file, "\n")
   cat("   + Subject data:    ", subject_file, "\n")
-  cat("   + Followup data:   ", complete_file, " ⭐ FINAL\n")
+  cat("   + Session data:    ", complete_file, " ⭐ FINAL\n")
   
   # Create metadata files for key datasets
   write_metadata <- function(file_path, description, data_df) {
@@ -566,6 +640,19 @@ main <- function() {
   
   cat("\n✅ All files generated successfully! Ready for analysis.\n")
   
+  # Step 6: Extract measure documentation
+  cat("\n🔸 STEP 6: Extracting Measure Documentation\n")
+  cat("===========================================\n")
+  
+  measure_file <- "data/measure_metadata.csv"
+  
+  # Extract measure metadata
+  measure_data <- extract_measure_data(sql_file)
+  write_csv(measure_data, measure_file)
+  cat("💾 Saved measure metadata:", measure_file, "\n")
+  
+  cat("📊 Extracted", nrow(measure_data), "measures\n")
+  
   # Clean up intermediate files, keeping only the final complete dataset
   cat("\n🧹 CLEANING UP INTERMEDIATE FILES\n")
   cat("=================================\n")
@@ -585,10 +672,11 @@ main <- function() {
   }
   
   cat("\n📁 Final Clean Workspace:\n")
-  cat("   ✅ FINAL DATASET:     ", complete_file, " ⭐\n")
-  cat("   ✅ FINAL METADATA:    ", paste0(tools::file_path_sans_ext(complete_file), "_metadata.txt"), "\n")
-  cat("   ✅ SOURCE DATA:       ", sql_file, "\n")
-  cat("   ✅ EXTRACTION SCRIPT: extract_basic_responses.R\n")
+  cat("   ✅ FINAL DATASET:      ", complete_file, " ⭐\n")
+  cat("   ✅ FINAL METADATA:     ", paste0(tools::file_path_sans_ext(complete_file), "_metadata.txt"), "\n")
+  cat("   ✅ MEASURE METADATA:   ", measure_file, "\n")
+  cat("   ✅ SOURCE DATA:        ", sql_file, "\n")
+  cat("   ✅ EXTRACTION SCRIPT:  extract_basic_responses.R\n")
   cat("\n🗑️  Removed", files_removed, "intermediate files to keep workspace clean.\n")
 }
 
@@ -604,9 +692,10 @@ if (!interactive()) {
   cat("🔸 Individual functions are available:\n")
   cat("   - extract_item_responses(sql_file)\n")
   cat("   - extract_item_data(sql_file)\n")
+  cat("   - extract_measure_data(sql_file)\n")
   cat("   - extract_administration_data(sql_file)\n")
   cat("   - extract_subject_data(sql_file)\n")
-  cat("   - extract_followup_data(sql_file)\n")
+  cat("   - extract_session_data(sql_file)\n")
   cat("   - extract_therapist_data(sql_file)\n")
   cat("\n🎯 To run the complete pipeline: main()\n")
 }
