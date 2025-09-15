@@ -932,65 +932,6 @@ kable(composition_summary,
                 full_width = FALSE,
                 position = "left")
 ```
-
-## Measure Documentation
-
-*This section provides comprehensive documentation for all measures used in the FONDECYT study.*
-
-```{r load-measure-metadata}
-# Load measure metadata
-measure_metadata <- read_csv("data/measure_metadata.csv", show_col_types = FALSE)
-
-# Create summary statistics
-measure_summary <- measure_metadata %>%
-  summarise(
-    total_measures = n()
-  )
-```
-
-### Measure Inventory Summary
-
-```{r measure-summary, results='asis'}
-cat("**Total measures in system:**", measure_summary$total_measures, "  \n")
-cat("(Area information and psychometric fields are intentionally omitted.)\n\n")
-```
-
-
-### Measure Descriptions
-
-*Detailed descriptions for each measure, including administration instructions.*
-
-```{r measure-descriptions, results='asis'}
-# Create expandable descriptions for each active measure
-measures_for_description <- measure_metadata %>%
-  arrange(measure_id)
-
-for (i in 1:nrow(measures_for_description)) {
-  measure <- measures_for_description[i, ]
-  
-  cat("#### ", measure$measure_title)
-  if (!is.na(measure$measure_label)) {
-    cat(" (", measure$measure_label, ")")
-  }
-  cat("\n\n")
-  
-  # Basic info
-  cat("**Measure ID:** ", measure$measure_id, "  \n")
-  
-  # Description
-  if (!is.na(measure$measure_description) && measure$measure_description != "") {
-    cat("\n**Description:**\n\n")
-    # Clean up HTML tags for better display
-    clean_desc <- gsub("<[^>]*>", "", measure$measure_description)
-    clean_desc <- gsub("\\\\r\\\\n", "\n", clean_desc)
-    clean_desc <- gsub("&[^;]+;", "", clean_desc)  # Remove HTML entities
-    cat(clean_desc, "\n\n")
-  }
-  
-  cat("---\n\n")
-}
-```
-
 ### All Measures (Including Inactive)
 
 *Complete inventory of all measures in the database for reference.*
