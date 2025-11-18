@@ -500,12 +500,34 @@ extract_therapist_data <- function(sql_file) {
 }
 
 # Main execution
-main <- function() {
+main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 24, 23, 22, 21, 8)) {
   cat("🎯 FONDECYT Complete Data Extraction Pipeline\n")
   cat("============================================\n")
   
-  # Define file paths
-  sql_file <- "data/dump-fondecyt-202507271125.sql"  # SQL dump in data directory
+  # Determine SQL dump path (interactive selection if not provided)
+  if (is.null(sql_file)) {
+    default_path <- "data/dump-fondecyt-202507271125.sql"
+    if (file.exists(default_path)) {
+      sql_file <- default_path
+      cat("📂 Using default SQL dump:", sql_file, "\n")
+    } else {
+      backup_candidates <- list.files("data", pattern = "db_backup\\.sql$", full.names = TRUE)
+      if (length(backup_candidates) > 0) {
+        fi <- file.info(backup_candidates)
+        chosen <- rownames(fi)[which.max(fi$mtime)]
+        sql_file <- chosen
+        cat("📂 Default dump not found; using latest backup:", sql_file, "\n")
+      } else if (interactive()) {
+        cat("📁 Please select the SQL dump file...\n")
+        sql_file <- file.choose()
+        cat("✅ Selected:", sql_file, "\n")
+      } else {
+        stop("❌ SQL dump path not provided, no default or backups found. Pass path: main('path/to/dump.sql')")
+      }
+    }
+  }
+  
+  # Define output file paths
   basic_file <- "data/item_responses.csv"
   item_file <- "data/item_responses_202507271125.csv"
   admin_file <- "data/item_responses_with_admin_202507271125.csv"
@@ -520,7 +542,7 @@ main <- function() {
   # Step 1: Extract basic item responses
   cat("\n🔸 STEP 1: Extracting Basic Item Responses\n")
   cat("==========================================\n")
-  item_responses <- extract_item_responses(sql_file)
+  item_responses <- extract_item_responses(sql_file, excluded_measure_ids = excluded_measure_ids)
   write_csv(item_responses, basic_file)
   cat("💾 Saved basic dataset:", basic_file, "\n")
   cat("📊 Records:", nrow(item_responses), "rows ×", ncol(item_responses), "columns\n")
@@ -687,15 +709,18 @@ if (!interactive()) {
   # If running interactively, show instructions
   cat("📋 FONDECYT Complete Data Extraction Pipeline\n")
   cat("============================================\n")
-  cat("🔸 This script contains a complete extraction pipeline\n")
-  cat("🔸 Run main() to execute the full pipeline\n")
-  cat("🔸 Individual functions are available:\n")
-  cat("   - extract_item_responses(sql_file)\n")
-  cat("   - extract_item_data(sql_file)\n")
-  cat("   - extract_measure_data(sql_file)\n")
-  cat("   - extract_administration_data(sql_file)\n")
-  cat("   - extract_subject_data(sql_file)\n")
-  cat("   - extract_session_data(sql_file)\n")
-  cat("   - extract_therapist_data(sql_file)\n")
-  cat("\n🎯 To run the complete pipeline: main()\n")
+  cat("🔸 This script contains a complete extraction pipeline.\n")
+  cat("🔸 Usage:\n")
+  cat("    main()                      # Prompts to select dump if default missing\n")
+  cat("    main('data/dump.sql')       # Use explicit path\n")
+  cat("    main(excluded_measure_ids=c(1,2))  # Override exclusion list\n")
+  cat("\n🔸 Individual helper functions:\n")
+  cat("    extract_item_responses(sql_file, excluded_measure_ids)\n")
+  cat("    extract_item_data(sql_file)\n")
+  cat("    extract_measure_data(sql_file)\n")
+  cat("    extract_administration_data(sql_file)\n")
+  cat("    extract_subject_data(sql_file)\n")
+  cat("    extract_session_data(sql_file)\n")
+  cat("    extract_therapist_data(sql_file)\n")
+  cat("\n🎯 Run main() to begin.\n")
 }

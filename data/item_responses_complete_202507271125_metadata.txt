@@ -1,10 +1,10 @@
 Dataset: Complete Item Responses with All Metadata
-Generated: 2025-07-28 09:28:16.098385
+Generated: 2025-11-18 10:18:35
 Source: dump-fondecyt-202507271125.sql
-File: item_responses_complete_202507271125.csv
+File: data/item_responses_complete_202507271125.csv
 
 Dataset Statistics:
-- Total responses: 621392
-- Total columns: 30
-- File size: 1085 MB
+- Total responses: 686983
+- Total columns: 27
+- File size: 1318 MB
 

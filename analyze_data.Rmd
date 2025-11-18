@@ -932,21 +932,45 @@ kable(composition_summary,
                 full_width = FALSE,
                 position = "left")
 ```
+
+```{r ensure-measure-metadata}
+# Ensure measure_metadata is available (load if missing)
+if (!exists("measure_metadata")) {
+  measure_path <- "data/measure_metadata.csv"
+  if (file.exists(measure_path)) {
+    measure_metadata <- readr::read_csv(measure_path, show_col_types = FALSE)
+  } else {
+    warning("measure_metadata.csv not found; measure tables will be empty.")
+    measure_metadata <- tibble::tibble(
+      measure_id = integer(),
+      measure_title = character(),
+      measure_label = character(),
+      measure_description = character()
+    )
+  }
+}
+```
 ### All Measures (Including Inactive)
 
 *Complete inventory of all measures in the database for reference.*
 
 ```{r all-measures-table}
 all_measures <- measure_metadata %>%
+  mutate(
+    Description = measure_description %>%
+      dplyr::coalesce("") %>%
+      gsub("\\\\r\\\\n|\\r\\n|\\n", "<br/>", .)
+  ) %>%
   select(
     `ID` = measure_id,
     `Title` = measure_title,
     `Label` = measure_label,
-    `Description` = measure_description
+    `Description`
   ) %>%
   arrange(`ID`)
 
 datatable(all_measures, 
+          escape = c(1, 2, 3),  # render HTML only in Description
           options = list(pageLength = 20, scrollX = TRUE),
           caption = "Table: Measure Inventory (ID, Title, Label, Description)",
           filter = 'top',
