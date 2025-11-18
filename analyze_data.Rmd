@@ -983,3 +983,162 @@ datatable(all_measures,
 - **Data Source:** Measure metadata extracted from `dump-fondecyt-202507271125.sql`
 - **Last Updated:** `r Sys.Date()`
 - **File Location:** Measure metadata saved to `data/measure_metadata.csv`
+
+## Wide Patient-Item Matrix (Patients as Rows)
+
+This section constructs a wide-format representation where each row is a patient and each column is a specific item response from a specific administration of a measure. Column naming follows the pattern:
+
+- Naming: `MEASURECODE_ITEMPOSITION_tN`
+- Example: `PHQ_9_1_t1`, `PHQ_9_2_t1`, ..., `PHQ_9_1_t2` for a patient with two PHQ-9 administrations.
+
+Rules:
+- Subject: Only patients are included (subject_type = "Patient").
+- Ordering: Administrations are ordered by `admin_start_datetime` per subject × measure; items ordered by `item_position` within each administration.
+- Values: Numeric responses when available; otherwise character responses. All values stored as text in the wide CSV.
+
+```{r wide-matrix-build, message=TRUE}
+# Ensure measure metadata available
+if (!exists("measure_metadata")) {
+  measure_path <- "data/measure_metadata.csv"
+  if (file.exists(measure_path)) {
+    measure_metadata <- readr::read_csv(measure_path, show_col_types = FALSE)
+  } else {
+    stop("measure_metadata.csv not found; cannot build wide matrix")
+  }
+}
+
+# Helper to build a measure code from label/title
+sanitize_code <- function(x) {
+  x <- ifelse(is.na(x) | x == "", NA_character_, x)
+  x <- dplyr::coalesce(x, "")
+  x <- toupper(gsub("[^A-Za-z0-9]+", "_", x))
+  x <- gsub("^_+|_+$", "", x)
+  gsub("_+", "_", x)
+}
+
+# Measure codes lookup
+measure_codes <- measure_metadata %>%
+  transmute(
+    item_measure_id = measure_id,
+    measure_code = dplyr::coalesce(sanitize_code(measure_label), sanitize_code(measure_title), paste0("MEASURE_", measure_id))
+  )
+
+patients_long <- data %>%
+  filter(subject_type == "Patient", !is.na(item_id), !is.na(item_measure_id)) %>%
+  # admin sequence per subject x measure
+  mutate(admin_start_datetime = as.POSIXct(admin_start_datetime, tz = "UTC")) %>%
+  distinct(subject_id, item_measure_id, administration_id, admin_start_datetime) %>%
+  arrange(subject_id, item_measure_id, admin_start_datetime, administration_id) %>%
+  group_by(subject_id, item_measure_id) %>%
+  mutate(admin_seq = row_number()) %>%
+  ungroup() %>%
+  # join back to all responses to get items
+  right_join(
+    data %>% filter(subject_type == "Patient", !is.na(item_id), !is.na(item_measure_id)) %>%
+      select(subject_id, item_measure_id, administration_id, response_id, response_date, item_position, item_label, numeric_value, character_value),
+    by = c("subject_id", "item_measure_id", "administration_id")
+  ) %>%
+  left_join(measure_codes, by = "item_measure_id")
+
+patients_long <- patients_long %>%
+  mutate(
+    item_pos = suppressWarnings(as.integer(item_position)),
+    item_pos = ifelse(is.na(item_pos), 9999L, item_pos),
+    measure_code = ifelse(is.na(measure_code) | measure_code == "", paste0("MEASURE_", item_measure_id), measure_code),
+    col_name = paste0(measure_code, "_", item_pos, "_t", admin_seq),
+    value = ifelse(!is.na(numeric_value), as.character(numeric_value), as.character(character_value)),
+    resp_time = suppressWarnings(as.POSIXct(response_date, tz = "UTC"))
+  )
+
+# Pick the latest response if duplicates exist for a subject + col_name
+patients_long_unique <- patients_long %>%
+  filter(!is.na(col_name)) %>%
+  group_by(subject_id, col_name) %>%
+  arrange(resp_time, response_id, .by_group = TRUE) %>%
+  summarise(value = dplyr::last(value), .groups = "drop")
+
+patients_wide <- patients_long_unique %>%
+  tidyr::pivot_wider(names_from = col_name, values_from = value)
+
+# Reorder columns: by measure_code, then administration sequence, then item position
+col_structure <- patients_long %>%
+  filter(!is.na(col_name)) %>%
+  distinct(measure_code, admin_seq, item_pos, col_name) %>%
+  arrange(measure_code, admin_seq, item_pos)
+
+col_order <- col_structure$col_name
+
+patients_wide <- patients_wide %>%
+  dplyr::select(subject_id, dplyr::all_of(col_order))
+
+# Save wide matrix and a variable dictionary
+wide_csv <- "data/patient_item_matrix_wide_202507271125.csv"
+readr::write_csv(patients_wide, wide_csv)
+
+wide_dict <- patients_long %>%
+  transmute(
+    column_name = col_name,
+    subject_id,
+    item_measure_id,
+    measure_code,
+    item_id = NA_integer_,
+    item_position = item_pos,
+    admin_seq
+  ) %>%
+  distinct(column_name, item_measure_id, measure_code, item_position, admin_seq)
+
+# Enhance dictionary with measure + item info
+item_lookup <- data %>%
+  select(item_id, item_label, item_position, item_measure_id) %>%
+  distinct()
+
+wide_dict <- patients_long %>%
+  select(col_name, item_measure_id, item_position = item_pos, admin_seq, item_label) %>%
+  distinct() %>%
+  left_join(measure_metadata %>% select(measure_id, measure_title, measure_label), by = c("item_measure_id" = "measure_id")) %>%
+  left_join(measure_codes, by = "item_measure_id") %>%
+  transmute(
+    column_name = col_name,
+    measure_id = item_measure_id,
+    measure_code,
+    measure_title,
+    measure_label,
+    item_position,
+    admin_seq
+  ) %>%
+  arrange(measure_code, admin_seq, item_position)
+
+wide_dict_csv <- "data/patient_item_matrix_wide_dictionary_202507271125.csv"
+readr::write_csv(wide_dict, wide_dict_csv)
+
+cat("\n✅ Wide matrix saved to:", wide_csv, "\n")
+cat("📘 Dictionary saved to:", wide_dict_csv, "\n")
+```
+
+### Wide Matrix Summary {.alert .alert-info}
+
+```{r wide-summary, results='asis'}
+cat("- Rows (patients): ", nrow(patients_wide), "\n", sep = "")
+cat("- Columns (responses): ", ncol(patients_wide) - 1, "\n", sep = "")
+cat("- Example columns: ", paste(head(setdiff(names(patients_wide), "subject_id"), 8), collapse = ", "), "\n", sep = "")
+```
+
+### Wide Matrix Preview
+
+```{r wide-preview}
+preview_wide <- patients_wide %>%
+  select(subject_id, head(setdiff(names(patients_wide), "subject_id"), 25))
+
+datatable(preview_wide,
+          options = list(pageLength = 5, scrollX = TRUE),
+          caption = "Preview: Patient × Item Responses (Wide)",
+          rownames = FALSE)
+```
+
+### Variable Dictionary (Preview)
+
+```{r wide-dict-preview}
+dict_preview <- wide_dict %>% head(50)
+knitr::kable(dict_preview, align = 'l') %>%
+  kableExtra::kable_styling(full_width = FALSE)
+```

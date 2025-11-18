@@ -13,7 +13,19 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(readr)
   library(stringr)
+  library(rlang)
 })
+
+# Silence R CMD check notes for tidy-eval (NSE) column references
+if (getRversion() >= "2.15.1") {
+  utils::globalVariables(c(
+    ".", "item_id", "administration_id", "numeric_value", "created_datetime",
+    "last_edit_datetime", "item_measure_id", "label", "measure_id",
+    "is_required", "position", "item_notes", "item_description_long",
+    "cutoff_score", "sensitivity", "specificity", "ppv", "npv", "auc",
+    "measure_title"
+  ))
+}
 
 # Function to extract item responses from SQL dump with measure exclusion
 extract_item_responses <- function(sql_file, excluded_measure_ids = c(34, 29, 28, 27, 26, 24, 23, 22, 21, 8)) {
@@ -164,23 +176,39 @@ extract_item_data <- function(sql_file) {
   temp_file <- tempfile(fileext = ".tsv")
   writeLines(c(paste(column_names, collapse = "\t"), data_rows), temp_file)
   
-  item_data <- read_tsv(temp_file, 
+  item_df <- read_tsv(temp_file, 
                        na = c("\\N", ""),
                        show_col_types = FALSE,
                        locale = locale(encoding = "UTF-8"))
   
   unlink(temp_file)
-  
-  # Convert data types and select relevant columns
-  item_data <- item_data %>%
-    mutate(id = as.integer(id)) %>%
+
+  # Helper to pick first available column from candidates
+  pick_col <- function(df, candidates) {
+    for (c in candidates) {
+      if (c %in% names(df)) return(df[[c]])
+    }
+    return(rep(NA_character_, nrow(df)))
+  }
+
+  # Build enriched item_data
+  item_data <- item_df %>%
+    mutate(
+      id = as.integer(id),
+      item_notes = as.character(pick_col(., c("notes", "help_text", "guidance"))),
+      item_description_long = as.character(pick_col(., c("detailed_description", "description_long", "description_html", "description"))),
+      item_explanation = as.character(pick_col(., c("explanation", "item_explanation", "rationale")))
+    ) %>%
     select(
       item_id = id,
       item_label = label,
       item_text = text,
       item_measure_id = measure_id,
       item_is_required = is_required,
-      item_position = position
+      item_position = position,
+      item_notes,
+      item_description_long,
+      item_explanation
     ) %>%
     filter(!is.na(item_id))
   
@@ -674,6 +702,37 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   cat("💾 Saved measure metadata:", measure_file, "\n")
   
   cat("📊 Extracted", nrow(measure_data), "measures\n")
+
+  # Export measure items (joined with measure titles)
+  cat("🧾 Preparing per-measure item documentation...\n")
+  measure_items_file <- "data/measure_items.csv"
+  measure_items <- item_data %>%
+    left_join(measure_data %>% select(measure_id, measure_title), by = c("item_measure_id" = "measure_id")) %>%
+    transmute(
+      measure_id = item_measure_id,
+      measure_title = measure_title,
+      item_id = item_id,
+      item_position = item_position,
+      item_label = item_label,
+      item_prompt = item_text,
+      item_required = item_is_required,
+      item_notes = item_notes,
+      item_description_long = item_description_long,
+      item_explanation = item_explanation
+    ) %>%
+    arrange(measure_id, item_position, item_id)
+  write_csv(measure_items, measure_items_file)
+  cat("💾 Saved measure items:", measure_items_file, "\n")
+
+  # Export present measures (appearing in the final dataset)
+  cat("🧾 Computing measures present in dataset...\n")
+  present_measures_file <- "data/present_measures.csv"
+  present_measures <- enhanced_data %>%
+    filter(!is.na(item_measure_id)) %>%
+    distinct(measure_id = item_measure_id) %>%
+    arrange(measure_id)
+  write_csv(present_measures, present_measures_file)
+  cat("💾 Saved present measures list:", present_measures_file, "\n")
   
   # Clean up intermediate files, keeping only the final complete dataset
   cat("\n🧹 CLEANING UP INTERMEDIATE FILES\n")

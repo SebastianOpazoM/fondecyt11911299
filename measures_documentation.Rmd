@@ -1,0 +1,153 @@
+---
+title: "Measures Documentation"
+author: "FONDECYT 1191299"
+date: "`r format(Sys.Date())`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(readr)
+  library(stringr)
+  library(knitr)
+  library(kableExtra)
+  library(DT)
+})
+
+data_dir <- "data"
+mm_path <- file.path(data_dir, "measure_metadata.csv")
+mi_path <- file.path(data_dir, "measure_items.csv")
+pm_path <- file.path(data_dir, "present_measures.csv")
+
+stopifnot(file.exists(mm_path), file.exists(mi_path), file.exists(pm_path))
+
+measure_metadata <- readr::read_csv(mm_path, show_col_types = FALSE)
+measure_items    <- readr::read_csv(mi_path, show_col_types = FALSE)
+present_measures <- readr::read_csv(pm_path, show_col_types = FALSE)
+
+# Helper to preserve line breaks when rendering HTML
+nl2br <- function(x) {
+  x <- ifelse(is.na(x), "", x)
+  stringr::str_replace_all(x, "\\r?\\n", "<br/>")
+}
+
+# Helper to pick the first existing column from a set of candidates
+col_pick <- function(df, candidates) {
+  for (nm in candidates) {
+    if (nm %in% names(df)) return(df[[nm]])
+  }
+  rep(NA_character_, nrow(df))
+}
+
+# Measures to document: only those that appear in responses
+measures_to_document <- present_measures %>%
+  select(measure_id) %>%
+  distinct() %>%
+  left_join(measure_metadata, by = "measure_id") %>%
+  arrange(measure_title, measure_id)
+```
+
+## Overview
+
+- Source: `data/measure_metadata.csv`, `data/measure_items.csv`, `data/present_measures.csv`.
+- Scope: Only measures actually present in the extracted responses.
+- Item fields: prompt, label, required, position, notes, long description.
+
+```{r summary-table}
+overview <- measures_to_document %>%
+  transmute(
+    Measure = dplyr::coalesce(measure_title, paste0("Measure ", measure_id)),
+    `Measure ID` = measure_id
+  )
+
+knitr::kable(overview, align = c("l", "c")) %>%
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+## Measures
+
+```{r measures-loop, results='asis'}
+if (nrow(measures_to_document) == 0) {
+  cat("<p><em>No measures present in responses.</em></p>")
+} else {
+  for (i in seq_len(nrow(measures_to_document))) {
+    mrow <- measures_to_document[i, ]
+    mid  <- mrow$measure_id
+    mttl <- dplyr::coalesce(col_pick(mrow, c("measure_title")), paste0("Measure ", mid))
+    mshort <- col_pick(mrow, c("measure_short_name", "short_name", "measure_code", "slug"))
+    mshort <- ifelse(is.na(mshort), "", mshort)
+    mver <- col_pick(mrow, c("measure_version", "version"))
+    mver <- ifelse(is.na(mver), "", mver)
+    mdesc <- col_pick(mrow, c("measure_description", "description"))
+    mdesc <- ifelse(is.na(mdesc), "", mdesc)
+
+    cat(sprintf("<details open>\n<summary><strong>%s</strong> (ID: %s)%s%s</summary>\n",
+                htmltools::htmlEscape(mttl),
+                htmltools::htmlEscape(as.character(mid)),
+                if (nzchar(mshort)) paste0(" — ", htmltools::htmlEscape(mshort)) else "",
+                if (nzchar(mver)) paste0(" — v", htmltools::htmlEscape(as.character(mver))) else ""))
+
+    if (nzchar(mdesc)) {
+      cat(sprintf("<p>%s</p>\n", nl2br(mdesc)))
+    }
+
+    # Build item table with all available exported fields
+    items_raw <- measure_items %>% filter(measure_id == mid)
+    if (nrow(items_raw) > 0) {
+      # Identify description column (handles possible trailing % or alternative naming)
+      desc_col <- names(items_raw)[grepl('^item_description_long', names(items_raw))]
+      if (length(desc_col) == 0) desc_col <- names(items_raw)[grepl('^description_long', names(items_raw))]
+      if (length(desc_col) == 0) desc_col <- NA_character_
+
+      items <- items_raw %>%
+        mutate(
+          item_position_disp = suppressWarnings(as.numeric(col_pick(., c('item_position','position')))),
+          item_label_disp = col_pick(., c('item_label','label')),
+          item_prompt_disp = col_pick(., c('item_prompt','prompt','text','title','question')),
+          item_explanation_disp = col_pick(., c('item_explanation','explanation','rationale')),
+          item_required_disp = col_pick(., c('item_required','item_is_required','required')),
+          item_notes_disp = col_pick(., c('item_notes','notes')),
+          item_description_long_disp = if (!is.na(desc_col[1])) .[[desc_col[1]]] else col_pick(., c('item_description_long','description_long','long_description'))
+        ) %>%
+        transmute(
+          `Item ID` = item_id,
+          Position = item_position_disp,
+          Label = item_label_disp,
+          Prompt = item_prompt_disp,
+          Explanation = nl2br(item_explanation_disp),
+          Required = item_required_disp,
+          Notes = nl2br(item_notes_disp),
+          `Long Description` = nl2br(item_description_long_disp)
+        ) %>%
+        arrange(Position, `Item ID`)
+    } else {
+      items <- items_raw
+    }
+
+    if (nrow(items) == 0) {
+      cat("<p><em>No item metadata found for this measure.</em></p>\n")
+    } else {
+      # Static HTML table to ensure all items always visible when knit
+      items %>%
+        knitr::kable(escape = FALSE, align = 'l') %>%
+        kableExtra::kable_styling(full_width = TRUE, font_size = 12) %>%
+        kableExtra::scroll_box(width = '100%', height = '400px') %>%
+        print()
+    }
+
+    cat("</details>\n\n")
+  }
+}
+```
+
+```{r session-info}
+sessionInfo()
+```
