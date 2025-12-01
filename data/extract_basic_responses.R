@@ -163,7 +163,9 @@ extract_item_data <- function(sql_file) {
   # Extract column names from COPY statement
   copy_line <- sql_content[copy_start]
   columns_match <- str_match(copy_line, "\\((.*?)\\)")
-  column_names <- trimws(strsplit(columns_match[1,2], ",")[[1]])
+  column_names_raw <- trimws(strsplit(columns_match[1,2], ",")[[1]])
+  # Remove quotes from column names (e.g., "position" -> position)
+  column_names <- gsub('^"|"$', '', column_names_raw)
   
   # Find data rows
   data_start <- copy_start + 1
@@ -172,14 +174,19 @@ extract_item_data <- function(sql_file) {
   # Extract data rows
   data_rows <- sql_content[data_start:data_end]
   
-  # Create temp file and use readr for efficient parsing
+  # Create temp file and use read.table for reliable parsing
+  # Note: read_tsv was silently stopping early on some rows, read.table is more reliable
   temp_file <- tempfile(fileext = ".tsv")
   writeLines(c(paste(column_names, collapse = "\t"), data_rows), temp_file)
   
-  item_df <- read_tsv(temp_file, 
-                       na = c("\\N", ""),
-                       show_col_types = FALSE,
-                       locale = locale(encoding = "UTF-8"))
+  item_df <- read.table(temp_file,
+                        header = TRUE,
+                        sep = "\t",
+                        quote = "",
+                        na.strings = c("\\N", ""),
+                        stringsAsFactors = FALSE,
+                        encoding = "UTF-8",
+                        comment.char = "")
   
   unlink(temp_file)
 
