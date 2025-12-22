@@ -175,6 +175,9 @@ After each psychotherapy session, therapists complete:
 
 </details>
 
+###Executive Summary of the Proposal
+The heterogeneity of depressive presentations may constitute a factor that dilutes treatment effectiveness. One of the forms of heterogeneity corresponds to a subtype of patients who have Early Life Maltreatment and Adversity (ELMA), which is reported in 54% of patients with a diagnosis of depression. Individuals with ELMA present with higher rates of depression, have early onset, more severity, comorbidity, and suicide risk, and a smaller response rate.Local research has shown that it is necessary to focus on ELMA in the treatment of depression in patients with histories of ELMA, and that psychoeducation increases patients´ willingness to discuss ELMA with their therapists. The proposed research is an observational case-match study that will evaluate the acceptability and effectiveness of providing trauma-informed psychotherapy, with automatated feedback to patients and therapists regarding ELMA in depressed patients.Outcomes in depression (PHQ-9) and psychological problems (CORE-OM) from 60 patients treated a the PsiConecta Clinic with a trauma-informed treatment and automated feedback will be compared with outcomes of 200 match-cases from other five clinics treated with TAU (from our ongoing Fondecyt project on alliance in depressed patients).
+
 
 ## About study 241209010
 
