@@ -44,6 +44,10 @@ __“Comprehensive model of the therapeutic alliance in psychotherapy with patie
 
 In broad terms, the study aims to “propose an empirically comprehensive model of the therapeutic alliance in the treatment of patients with depression, considering the relationship between patient and therapist characteristics, process variables, and psychotherapy outcomes.”
 
+### Ethics Committee Approval
+
+This research was approved on May 2, 2019, by the Scientific Ethical Committee for Health Sciences of the Pontificia Universidad Católica de Chile (n° 180823024).
+
 ### Specific Objectives of the Study
 
 - Describe the relationship between __patient characteristics__ and the measure of the alliance, trajectory, and ruptures.
@@ -171,15 +175,113 @@ After each psychotherapy session, therapists complete:
 
 - __CPPS-T__ (Comparative Psychotherapy Process Scale – Therapist version; 20 items; adherence to CBT and interpersonal/psychoanalytic techniques in non-manualized treatment).
 
+#### Important Information
+
+In the initial phase of the project, several assessment instruments were administered that were subsequently revised. The following modifications were implemented:
+
+1) The study initially focused on patients with major depressive disorder, which served as an inclusion criterion and was determined using the MINI diagnostic interview. This criterion was later removed; consequently, the MINI interview was no longer administered.
+
+2) To assess depressive symptoms, the BDI self-report questionnaire was replaced with the PHQ-9 self-report questionnaire.
+
+3) To assess personality, the IPO self-report questionnaire was replaced with the LPFS-BF-2.0 self-report questionnaire. 
+
+Therefore, the database may contain participants who have completed the MINI, BDI, and IPO questionnaires.
+
 ## About FIP 2024
 
-</details>
+<details>
+<summary><strong>Click to expand</strong></summary>
 
-###Executive Summary of the Proposal
+<br/>
+
+### Executive Summary of the Proposal
+
 The heterogeneity of depressive presentations may constitute a factor that dilutes treatment effectiveness. One of the forms of heterogeneity corresponds to a subtype of patients who have Early Life Maltreatment and Adversity (ELMA), which is reported in 54% of patients with a diagnosis of depression. Individuals with ELMA present with higher rates of depression, have early onset, more severity, comorbidity, and suicide risk, and a smaller response rate.Local research has shown that it is necessary to focus on ELMA in the treatment of depression in patients with histories of ELMA, and that psychoeducation increases patients´ willingness to discuss ELMA with their therapists. The proposed research is an observational case-match study that will evaluate the acceptability and effectiveness of providing trauma-informed psychotherapy, with automatated feedback to patients and therapists regarding ELMA in depressed patients.Outcomes in depression (PHQ-9) and psychological problems (CORE-OM) from 60 patients treated a the PsiConecta Clinic with a trauma-informed treatment and automated feedback will be compared with outcomes of 200 match-cases from other five clinics treated with TAU (from our ongoing Fondecyt project on alliance in depressed patients).
 
+### Theoretical Summary
 
-## About study 241209010
+Worldwide, the lifetime prevalence of Major Depressive Disorder is 10% to 15% of the  population (Lépine & Briley, 2011), constituting the third cause of morbidity, and accounting  for 4.3% of the global burden of illness (WHO, 2011). In Chile, the prevalence of symptoms of depression is 17% in the general population and 26% among women (MINSAL, 2010).  
+
+Treating depression is a priority due to the high subjective, social, and economic burden of the  illness. However, treatment effectiveness is still somewhat disappointing (Craighead &  Dunlop, 2014). The heterogeneity of depressive presentations may constitute a factor that  dilutes treatment effectiveness (Fried, 2016). One of the forms of heterogeneity corresponds to a subtype of patients who have __early life maltreatment and adversity (ELMA)__ (Nanni et al., 2012).  
+
+Childhood maltreatment is reported in 46% of patients with a diagnosis of depression (Nelson  et al., 2016), and it is associated with attachment deficits (Egeland & Sroufe, 1981), impaired  cognitive and affective functioning (Pechtel & Pizzagalli, 2011), and immune dysregulation  (Fagundes et al., 2013). Individuals with ELMA present with higher rates of depression, have  early onset, more severity, comorbidity, and suicide risk, and a smaller response rate (Teicher  & Samson, 2013). Parental experience of maltreatment as a child is one of the most important  predictors of child maltreatment (van IJzendoorn et al., 2020), and thus, working with parents’  own experiences of maltreatment helps stop the intergenerational transmission of violence (Lieberman et al., 2005). 
+
+In Chile, Vitriol et al. (2010) has shown the importance of focusing on ELMA in the treatment  of women with severe depression with histories of ELMA. Also in our country, research has shown that patients are willing to report ELMA from the beginning of psychotherapy (Israel, 2019), especially if they receive an explanation that doing so is important for their diagnosis  and treatment (Correa, 2017). 
+
+The proposed research is an observational case-match study that will evaluate the acceptability and effectiveness of providing __trauma-informed psychotherapy__, with automated feedback to patients and therapists regarding __ELMA__, in __depressed patients__.
+
+### Ethics Committee Approval
+
+This study was incorporated as an amendment to the ethical approval of the FONDECYT 1191299. This FONDECYT 1191299 was approved on May 2, 2019, by the Scientific Ethical Committee for Health Sciences of the Pontificia Universidad Católica de Chile (n° 180823024).
+
+The amendment to include this study was approved on October 5, 2023.
+
+### Specific Objectives of the Study
+
+The __general objective__ of this study is to evaluate the acceptability and effectiveness of  providing trauma-informed psychotherapy, with automated feedback to patients and  therapists regarding ELMA, in depressed patients. 
+
+The __specific objectives are__:
+
+- Assess the __acceptability__ for patients and therapists of the automated ELMA feedback.
+
+- Assess the __effectiveness__ of the trauma-focused psychotherapy providing patients and therapists with ELMA feedback.
+
+- Assess if ELMA __moderates__ which patients benefit most from this intervention. 
+
+### Specific Hypotheses of the Study
+
+- The __ELMA automated feedback__ will be considered __acceptable for patientsand therapists__.
+
+- Patients in the condition that receives __trauma-informed psychotherapy__ will have __greater rates of improvements__ in their depressive symptomatology and overall psychological well being.
+
+- Patients with __greater ELMA__ will __benefit more from trauma-informed psychotherapy__.
+
+### Study Design
+
+#### Patients procedure
+
+<p style="text-align:center">
+  <a href="img/patient_flow_graph.png" target="_blank">
+    <img src="img/patient_flow_graph.png" alt="Patient Flow Diagram" style="max-width:100%; height:auto; border:1px solid #ddd; border-radius:6px; box-shadow: 0 1px 3px rgba(0,0,0,.1); cursor: zoom-in;" />
+  </a>
+  <br/>
+  <small>Click image to open full-size in a new tab</small>
+  
+</p>
+
+The procedure is the same as that described for the FONDECYT 1191299. The additional steps included in this study are:
+
+1) Patients receive automated feedback on ELMA based on their CTQ-SF results. This feedback includes automated feedback on the presence of ELMA, psychoeducation on how ELMA may relate to depression and other presenting problems, and the importance of openly discussing ELMA during psychotherapy.
+
+2) After receiving the feedback, patients complete a self-report questionnaire to assess the acceptability of the feedback and how these tools can be improved.
+
+#### Therapists procedure
+
+<p style="text-align:center">
+  <a href="img/therapist_flow_graph.png" target="_blank">
+    <img src="img/therapist_flow_graph.png" alt="Therapist Flow Diagram" style="max-width:100%; height:auto; border:1px solid #ddd; border-radius:6px; box-shadow: 0 1px 3px rgba(0,0,0,.1); cursor: zoom-in;" />
+  </a>
+  <br/>
+  <small>Click image to open full-size in a new tab</small>
+  
+</p>
+
+The procedure is the same as that described for the FONDECYT project. The additional steps included in this study are:
+
+1) Therapists receive automated feedback on ELMA from their patients based on their CTQ-SF results.This feedback includes automated feedback on the presence of ELMA and training on working effectively with ELMA. 
+
+2) After receiving the feedback, patients complete a self-report questionnaire to assess the acceptability of the feedback and how these tools can be improved.
+
+
+## About Study 241209010
+
+<details>
+<summary><strong>Click to expand</strong></summary>
+
+<br/>
+
+### Theoretical Summary
+
 
 
 ```{r libraries}
