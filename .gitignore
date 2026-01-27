@@ -106,7 +106,10 @@ output/
 # Data folder contents (selective ignoring)
 data/*.csv
 data/*.sql
+data/*.txt
 
 # Knit HTML and pdf files
 *.html
 *.pdf
+
+*.txt
