@@ -4,8 +4,7 @@ author: "Paula Errázuriz Arellano, Ph.D."
 date: "`r Sys.Date()`"
 output: 
   html_document:
-    toc: true
-    toc_float: true
+    toc: false
     theme: flatly
     highlight: tango
 ---
@@ -762,7 +761,7 @@ file_size_mb <- format(file.size(csv_file) / 1024^2, digits = 1)
 ## Column Documentation
 
 ```{r column-documentation}
-# Create dynamic column documentation
+# Create schema-driven column documentation
 base_descriptions <- list(
   "item_id" = "Unique identifier for the specific question/item being answered",
   "response_id" = "Unique identifier for each item response",
@@ -785,6 +784,7 @@ base_descriptions <- list(
   "subject_id" = "Unique identifier for the research subject who provided responses",
   "subject_type" = "Type/category of the research subject (factor: Patient, Therapist)",
   "subject_study_site_id" = "Study site identifier where the subject participated",
+  "subject_study_site" = "Human-readable study site name for the research subject",
   "session_id" = "Identifier linking to session record",
   "session_number" = "Sequential session number for the participant",
   "session_attendance_status" = "Boolean indicating if participant attended the session",
@@ -793,40 +793,75 @@ base_descriptions <- list(
   "session_therapist" = "Numeric ID of the therapist subject who conducted the session"
 )
 
-# Build column info dynamically
+# Build a canonical column list so expected columns are documented even if absent in this file
+expected_columns <- names(base_descriptions)
+extra_columns <- setdiff(names(data), expected_columns)
+documented_columns <- c(expected_columns, extra_columns)
+
+# Build column info
 column_info <- data.frame(
-  Column = names(data),
-  Type = sapply(data, function(x) class(x)[1]),
-  Description = sapply(names(data), function(col) {
+  Column = documented_columns,
+  Type = sapply(documented_columns, function(col) {
+    if (col %in% names(data)) {
+      class(data[[col]])[1]
+    } else {
+      "Missing in current file"
+    }
+  }),
+  Description = sapply(documented_columns, function(col) {
     if (col %in% names(base_descriptions)) {
       base_descriptions[[col]]
     } else {
       "Description not available"
     }
   }),
-  Sample_Values = sapply(names(data), function(col) {
-    sample_vals <- head(data[[col]], 3)
-    # Special handling for factors to show levels
-    if (is.factor(data[[col]])) {
-      unique_vals <- unique(data[[col]])
+  Sample_Values = sapply(documented_columns, function(col) {
+    if (!(col %in% names(data))) {
+      return("Not available in current file")
+    }
+
+    col_data <- data[[col]]
+
+    # Special handling for factors to show observed levels
+    if (is.factor(col_data)) {
+      unique_vals <- unique(col_data)
       unique_vals <- unique_vals[!is.na(unique_vals)]
+
+      if (length(unique_vals) == 0) {
+        return("All values missing")
+      }
+
       if (length(unique_vals) > 3) {
         sample_vals <- c(as.character(unique_vals[1:2]), "...")
       } else {
         sample_vals <- as.character(unique_vals)
       }
     } else {
+      non_missing <- col_data[!is.na(col_data)]
+
+      # For character fields, skip empty strings so examples are informative
+      if (is.character(non_missing)) {
+        non_missing <- non_missing[nzchar(trimws(non_missing))]
+      }
+
+      sample_vals <- unique(non_missing)
+
+      if (length(sample_vals) == 0) {
+        return("All values missing")
+      }
+
+      sample_vals <- head(sample_vals, 3)
+
       # Truncate long text for readability
       sample_vals <- sapply(sample_vals, function(x) {
-        if (is.na(x)) {
-          "NA"
-        } else if (is.character(x) && nchar(x) > 50) {
+        if (is.character(x) && nchar(x) > 50) {
           paste0(substr(x, 1, 47), "...")
         } else {
           as.character(x)
         }
       })
     }
+
     paste(sample_vals, collapse = ", ")
   }),
   stringsAsFactors = FALSE

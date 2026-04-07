@@ -13,6 +13,7 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(readr)
   library(stringr)
+  library(tidyr)
   library(rlang)
 })
 
@@ -23,7 +24,11 @@ if (getRversion() >= "2.15.1") {
     "last_edit_datetime", "item_measure_id", "label", "measure_id",
     "is_required", "position", "item_notes", "item_description_long",
     "cutoff_score", "sensitivity", "specificity", "ppv", "npv", "auc",
-    "measure_title"
+    "measure_title", "subject_study_site_id", "subject_study_site", "name",
+    "study_id", "study", "study_site_id", "study_location", "identifier",
+    "subject_type", "discharge_state", "insurance_type", "patient_id",
+    "session_attendance_status_reason_known", "session_attendance_status_reason",
+    "session_scheduled_datetime", "session_index", "therapist"
   ))
 }
 
@@ -420,6 +425,177 @@ extract_subject_data <- function(sql_file) {
   return(subject_data)
 }
 
+# Function to extract study site data from SQL dump
+extract_study_site_data <- function(sql_file) {
+  cat("📋 Extracting study site data from SQL dump...\n")
+
+  # Read the SQL file
+  sql_content <- readLines(sql_file, warn = FALSE)
+
+  # Find the COPY statement for measurement_researchstudysite
+  copy_lines <- grep("^COPY public\\.measurement_researchstudysite", sql_content)
+
+  if (length(copy_lines) == 0) {
+    stop("❌ Could not find measurement_researchstudysite COPY statement")
+  }
+
+  # Use the first COPY statement
+  copy_start <- copy_lines[1]
+  cat("✅ Found study site COPY statement at line", copy_start, "\n")
+
+  # Extract column names
+  copy_line <- sql_content[copy_start]
+  columns_match <- str_match(copy_line, "\\((.*?)\\)")
+  column_names <- trimws(strsplit(columns_match[1,2], ",")[[1]])
+
+  # Find data rows
+  data_start <- copy_start + 1
+  data_end <- grep("^\\\\\\.$", sql_content[data_start:length(sql_content)])[1] + data_start - 2
+
+  # Extract data rows
+  data_rows <- sql_content[data_start:data_end]
+
+  # Create temp file and use readr for efficient parsing
+  temp_file <- tempfile(fileext = ".tsv")
+  writeLines(c(paste(column_names, collapse = "\t"), data_rows), temp_file)
+
+  study_site_data <- read_tsv(temp_file,
+                              na = c("\\N", ""),
+                              show_col_types = FALSE,
+                              locale = locale(encoding = "UTF-8"))
+
+  unlink(temp_file)
+
+  # Convert data types and select relevant columns
+  study_site_data <- study_site_data %>%
+    mutate(id = as.integer(id)) %>%
+    select(
+      subject_study_site_id = id,
+      subject_study_site = name
+    ) %>%
+    filter(!is.na(subject_study_site_id))
+
+  cat("✅ Processed", nrow(study_site_data), "study site records\n")
+  return(study_site_data)
+}
+
+# Function to extract study metadata from SQL dump
+extract_study_data <- function(sql_file) {
+  cat("📋 Extracting study metadata from SQL dump...\n")
+
+  # Read the SQL file
+  sql_content <- readLines(sql_file, warn = FALSE)
+
+  # Find the COPY statement for measurement_researchstudy
+  copy_lines <- grep("^COPY public\\.measurement_researchstudy", sql_content)
+
+  if (length(copy_lines) == 0) {
+    stop("❌ Could not find measurement_researchstudy COPY statement")
+  }
+
+  # Use the first COPY statement
+  copy_start <- copy_lines[1]
+  cat("✅ Found study COPY statement at line", copy_start, "\n")
+
+  # Extract column names
+  copy_line <- sql_content[copy_start]
+  columns_match <- str_match(copy_line, "\\((.*?)\\)")
+  column_names <- trimws(strsplit(columns_match[1,2], ",")[[1]])
+
+  # Find data rows
+  data_start <- copy_start + 1
+  data_end <- grep("^\\\\\\.$", sql_content[data_start:length(sql_content)])[1] + data_start - 2
+
+  # Extract data rows
+  data_rows <- sql_content[data_start:data_end]
+
+  # Create temp file and parse
+  temp_file <- tempfile(fileext = ".tsv")
+  writeLines(c(paste(column_names, collapse = "\t"), data_rows), temp_file)
+
+  study_data <- read_tsv(temp_file,
+                         na = c("\\N", ""),
+                         show_col_types = FALSE,
+                         locale = locale(encoding = "UTF-8"))
+
+  unlink(temp_file)
+
+  # Convert data types and select relevant columns
+  study_data <- study_data %>%
+    mutate(id = as.integer(id)) %>%
+    select(
+      study_id = id,
+      study = name
+    ) %>%
+    filter(!is.na(study_id))
+
+  cat("✅ Processed", nrow(study_data), "study records\n")
+  return(study_data)
+}
+
+# Function to extract subject roster fields from SQL dump
+extract_subject_roster_data <- function(sql_file) {
+  cat("📋 Extracting subject roster data from SQL dump...\n")
+
+  # Read the SQL file
+  sql_content <- readLines(sql_file, warn = FALSE)
+
+  # Find the COPY statement for measurement_researchsubject
+  copy_lines <- grep("^COPY public\\.measurement_researchsubject", sql_content)
+
+  if (length(copy_lines) == 0) {
+    stop("❌ Could not find measurement_researchsubject COPY statement")
+  }
+
+  # Use the first COPY statement
+  copy_start <- copy_lines[1]
+  cat("✅ Found subject roster COPY statement at line", copy_start, "\n")
+
+  # Extract column names
+  copy_line <- sql_content[copy_start]
+  columns_match <- str_match(copy_line, "\\((.*?)\\)")
+  column_names <- trimws(strsplit(columns_match[1,2], ",")[[1]])
+
+  # Find data rows
+  data_start <- copy_start + 1
+  data_end <- grep("^\\\\\\.$", sql_content[data_start:length(sql_content)])[1] + data_start - 2
+
+  # Extract data rows
+  data_rows <- sql_content[data_start:data_end]
+
+  # Create temp file and parse
+  temp_file <- tempfile(fileext = ".tsv")
+  writeLines(c(paste(column_names, collapse = "\t"), data_rows), temp_file)
+
+  subject_data <- read_tsv(temp_file,
+                           na = c("\\N", ""),
+                           show_col_types = FALSE,
+                           locale = locale(encoding = "UTF-8"))
+
+  unlink(temp_file)
+
+  # Convert data types and select requested roster fields
+  subject_data <- subject_data %>%
+    mutate(
+      id = as.integer(id),
+      study_id = as.integer(study_id),
+      study_site_id = as.integer(study_site_id)
+    ) %>%
+    select(
+      id,
+      identifier,
+      study_id,
+      study_site_id,
+      subject_type,
+      discharge_state,
+      insurance_type
+    ) %>%
+    filter(!is.na(id))
+
+  cat("✅ Processed", nrow(subject_data), "subject roster records\n")
+  return(subject_data)
+}
+
 # Function to extract session data from SQL dump
 extract_session_data <- function(sql_file) {
   cat("📋 Extracting session data from SQL dump...\n")
@@ -463,12 +639,21 @@ extract_session_data <- function(sql_file) {
   
   # Convert data types and select relevant columns
   followup_data <- followup_data %>%
-    mutate(id = as.integer(id)) %>%
+    mutate(
+      id = as.integer(id),
+      patient_id = as.integer(patient_id),
+      therapist_id = as.integer(therapist_id),
+      session_number = as.integer(session_number)
+    ) %>%
     select(
       session_id = id,
+      patient_id = patient_id,
       session_number = session_number,
       session_attendance_status = attendance_status,
+      session_attendance_status_reason_known = attendance_status_reason_known,
+      session_attendance_status_reason = attendance_status_reason,
       session_modality = session_modality,
+      session_scheduled_datetime = scheduled_datetime,
       session_therapist_id = therapist_id,
       session_comments = comments
     ) %>%
@@ -476,6 +661,58 @@ extract_session_data <- function(sql_file) {
   
   cat("✅ Processed", nrow(followup_data), "session records\n")
   return(followup_data)
+}
+
+# Build wide follow-up columns per patient using consecutive prefixes (s1_, s2_, ...)
+build_patient_followup_wide <- function(followup_data) {
+  cat("📋 Building wide follow-up columns for patient roster...\n")
+
+  followup_unique <- followup_data %>%
+    filter(!is.na(patient_id)) %>%
+    arrange(patient_id, is.na(session_scheduled_datetime), session_scheduled_datetime, session_id) %>%
+    group_by(patient_id) %>%
+    mutate(
+      session_index_num = row_number() - 1,
+      session_index = paste0("s", session_index_num)
+    ) %>%
+    ungroup() %>%
+    arrange(patient_id, session_index_num) %>%
+    transmute(
+      patient_id,
+      session_index,
+      session_number,
+      therapist = session_therapist_id,
+      attendance_status = session_attendance_status,
+      attendance_status_reason_known = session_attendance_status_reason_known,
+      attendance_status_reason = session_attendance_status_reason,
+      session_modality,
+      scheduled_datetime = session_scheduled_datetime
+    )
+
+  if (nrow(followup_unique) == 0) {
+    cat("⚠️  No follow-up rows available for wide patient roster columns\n")
+    return(data.frame(patient_id = integer()))
+  }
+
+  followup_wide <- followup_unique %>%
+    pivot_wider(
+      id_cols = patient_id,
+      names_from = session_index,
+      values_from = c(
+        session_number,
+        therapist,
+        attendance_status,
+        attendance_status_reason_known,
+        attendance_status_reason,
+        session_modality,
+        scheduled_datetime
+      ),
+      names_glue = "{session_index}_{.value}",
+      names_vary = "slowest"
+    )
+
+  cat("✅ Built", ncol(followup_wide) - 1, "wide follow-up columns across", nrow(followup_wide), "patients\n")
+  return(followup_wide)
 }
 
 # Function to extract therapist data from SQL dump
@@ -568,6 +805,7 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   admin_file <- "data/item_responses_with_admin_202507271125.csv"
   subject_file <- "data/item_responses_full_metadata_202507271125.csv"
   complete_file <- "data/item_responses_complete_202507271125.csv"
+  patients_list_file <- "data/patients_list_202507271125.csv"
   
   # Check if SQL dump exists
   if (!file.exists(sql_file)) {
@@ -617,16 +855,22 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   cat("\n🔸 STEP 4: Adding Subject Metadata\n")
   cat("==================================\n")
   subject_data <- extract_subject_data(sql_file)
+  study_site_data <- extract_study_site_data(sql_file)
   
   # Add subject linking
   enhanced_data <- enhanced_data %>%
     left_join(admin_data %>% select(administration_id, admin_subject_id), 
               by = "administration_id") %>%
-    left_join(subject_data, by = c("admin_subject_id" = "subject_id"))
+    left_join(subject_data, by = c("admin_subject_id" = "subject_id")) %>%
+    left_join(study_site_data, by = "subject_study_site_id")
   
   subject_join_count <- sum(!is.na(enhanced_data$subject_type))
   subject_join_rate <- round(subject_join_count / nrow(enhanced_data) * 100, 1)
   cat("🔗 Subject join rate:", subject_join_rate, "% (", subject_join_count, "out of", nrow(enhanced_data), "responses)\n")
+
+  study_site_join_count <- sum(!is.na(enhanced_data$subject_study_site))
+  study_site_join_rate <- round(study_site_join_count / nrow(enhanced_data) * 100, 1)
+  cat("🔗 Study site join rate:", study_site_join_rate, "% (", study_site_join_count, "out of", nrow(enhanced_data), "responses)\n")
   
   # Add subject_id column for consistency
   enhanced_data <- enhanced_data %>%
@@ -635,12 +879,48 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   
   write_csv(enhanced_data, subject_file)
   cat("💾 Saved subject-enhanced dataset:", subject_file, "\n")
+
+  # Step 4b: Build base patient roster
+  cat("\n🔸 STEP 4b: Building Base Patient Roster\n")
+  cat("====================================\n")
+  study_data <- extract_study_data(sql_file)
+  subject_roster_data <- extract_subject_roster_data(sql_file)
+
+  patients_list <- subject_roster_data %>%
+    filter(suppressWarnings(as.numeric(as.character(subject_type))) == 0) %>%
+    left_join(study_data, by = "study_id") %>%
+    left_join(
+      study_site_data %>%
+        transmute(study_site_id = subject_study_site_id, study_location = subject_study_site),
+      by = "study_site_id"
+    ) %>%
+    select(
+      id,
+      identifier,
+      study,
+      study_location,
+      subject_type,
+      discharge_state,
+      insurance_type
+    ) %>%
+    arrange(id)
+
+  cat("📊 Base patient roster records:", nrow(patients_list), "rows ×", ncol(patients_list), "columns\n")
   
   # Step 5: Add followup metadata
   cat("\n� STEP 5: Adding Followup Metadata\n")
   cat("===================================\n")
   followup_data <- extract_session_data(sql_file)
   therapist_data <- extract_therapist_data(sql_file)
+
+  # Add wide follow-up blocks to patient roster export
+  patient_followup_wide <- build_patient_followup_wide(followup_data)
+  patients_list <- patients_list %>%
+    left_join(patient_followup_wide, by = c("id" = "patient_id"))
+
+  write_csv(patients_list, patients_list_file)
+  cat("💾 Saved patients roster:", patients_list_file, "\n")
+  cat("📊 Patient roster records:", nrow(patients_list), "rows ×", ncol(patients_list), "columns\n")
   
   # Prepare session data - keep therapist_id as numeric
   followup_selected <- followup_data %>%
@@ -668,6 +948,7 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   cat("   Item metadata:     ", round(sum(!is.na(enhanced_data$item_label)) / nrow(enhanced_data) * 100, 1), "%\n")
   cat("   Administration:    ", round(sum(!is.na(enhanced_data$admin_start_datetime)) / nrow(enhanced_data) * 100, 1), "%\n")
   cat("   Subject metadata:  ", round(sum(!is.na(enhanced_data$subject_type)) / nrow(enhanced_data) * 100, 1), "%\n")
+  cat("   Study site names:  ", round(sum(!is.na(enhanced_data$subject_study_site)) / nrow(enhanced_data) * 100, 1), "%\n")
   cat("   Session data:      ", round(sum(!is.na(enhanced_data$session_id)) / nrow(enhanced_data) * 100, 1), "%\n")
   
   cat("\n📁 Generated Files:\n")
@@ -675,6 +956,7 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   cat("   + Item metadata:   ", item_file, "\n")
   cat("   + Administration:  ", admin_file, "\n")
   cat("   + Subject data:    ", subject_file, "\n")
+  cat("   + Patients roster: ", patients_list_file, "\n")
   cat("   + Session data:    ", complete_file, " ⭐ FINAL\n")
   
   # Create metadata files for key datasets
@@ -762,6 +1044,7 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   cat("\n📁 Final Clean Workspace:\n")
   cat("   ✅ FINAL DATASET:      ", complete_file, " ⭐\n")
   cat("   ✅ FINAL METADATA:     ", paste0(tools::file_path_sans_ext(complete_file), "_metadata.txt"), "\n")
+  cat("   ✅ PATIENTS ROSTER:    ", patients_list_file, "\n")
   cat("   ✅ MEASURE METADATA:   ", measure_file, "\n")
   cat("   ✅ SOURCE DATA:        ", sql_file, "\n")
   cat("   ✅ EXTRACTION SCRIPT:  extract_basic_responses.R\n")
@@ -786,7 +1069,11 @@ if (!interactive()) {
   cat("    extract_measure_data(sql_file)\n")
   cat("    extract_administration_data(sql_file)\n")
   cat("    extract_subject_data(sql_file)\n")
+  cat("    extract_study_site_data(sql_file)\n")
+  cat("    extract_study_data(sql_file)\n")
+  cat("    extract_subject_roster_data(sql_file)\n")
   cat("    extract_session_data(sql_file)\n")
+  cat("    build_patient_followup_wide(followup_data)\n")
   cat("    extract_therapist_data(sql_file)\n")
   cat("\n🎯 Run main() to begin.\n")
 }
