@@ -805,7 +805,7 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   admin_file <- "data/item_responses_with_admin_202507271125.csv"
   subject_file <- "data/item_responses_full_metadata_202507271125.csv"
   complete_file <- "data/item_responses_complete_202507271125.csv"
-  patients_list_file <- "data/patients_list_202507271125.csv"
+  patients_list_file <- "data/patients_list.csv"
   
   # Check if SQL dump exists
   if (!file.exists(sql_file)) {
