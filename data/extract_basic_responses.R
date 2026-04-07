@@ -805,7 +805,7 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   admin_file <- "data/item_responses_with_admin_202507271125.csv"
   subject_file <- "data/item_responses_full_metadata_202507271125.csv"
   complete_file <- "data/item_responses_complete_202507271125.csv"
-  patients_list_file <- "data/patients_list.csv"
+  subjects_list_file <- "data/subjects_list.csv"
   
   # Check if SQL dump exists
   if (!file.exists(sql_file)) {
@@ -880,14 +880,14 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   write_csv(enhanced_data, subject_file)
   cat("💾 Saved subject-enhanced dataset:", subject_file, "\n")
 
-  # Step 4b: Build base patient roster
-  cat("\n🔸 STEP 4b: Building Base Patient Roster\n")
+  # Step 4b: Build base subject roster
+  cat("\n🔸 STEP 4b: Building Base Subject Roster\n")
   cat("====================================\n")
   study_data <- extract_study_data(sql_file)
   subject_roster_data <- extract_subject_roster_data(sql_file)
 
-  patients_list <- subject_roster_data %>%
-    filter(suppressWarnings(as.numeric(as.character(subject_type))) == 0) %>%
+  subjects_list <- subject_roster_data %>%
+    filter(suppressWarnings(as.numeric(as.character(subject_type))) %in% c(0, 1)) %>%
     left_join(study_data, by = "study_id") %>%
     left_join(
       study_site_data %>%
@@ -905,7 +905,7 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
     ) %>%
     arrange(id)
 
-  cat("📊 Base patient roster records:", nrow(patients_list), "rows ×", ncol(patients_list), "columns\n")
+  cat("📊 Base subject roster records:", nrow(subjects_list), "rows ×", ncol(subjects_list), "columns\n")
   
   # Step 5: Add followup metadata
   cat("\n� STEP 5: Adding Followup Metadata\n")
@@ -913,14 +913,14 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   followup_data <- extract_session_data(sql_file)
   therapist_data <- extract_therapist_data(sql_file)
 
-  # Add wide follow-up blocks to patient roster export
+  # Add wide follow-up blocks to subject roster export
   patient_followup_wide <- build_patient_followup_wide(followup_data)
-  patients_list <- patients_list %>%
+  subjects_list <- subjects_list %>%
     left_join(patient_followup_wide, by = c("id" = "patient_id"))
 
-  write_csv(patients_list, patients_list_file)
-  cat("💾 Saved patients roster:", patients_list_file, "\n")
-  cat("📊 Patient roster records:", nrow(patients_list), "rows ×", ncol(patients_list), "columns\n")
+  write_csv(subjects_list, subjects_list_file)
+  cat("💾 Saved subjects roster:", subjects_list_file, "\n")
+  cat("📊 Subject roster records:", nrow(subjects_list), "rows ×", ncol(subjects_list), "columns\n")
   
   # Prepare session data - keep therapist_id as numeric
   followup_selected <- followup_data %>%
@@ -956,7 +956,7 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   cat("   + Item metadata:   ", item_file, "\n")
   cat("   + Administration:  ", admin_file, "\n")
   cat("   + Subject data:    ", subject_file, "\n")
-  cat("   + Patients roster: ", patients_list_file, "\n")
+  cat("   + Subjects roster: ", subjects_list_file, "\n")
   cat("   + Session data:    ", complete_file, " ⭐ FINAL\n")
   
   # Create metadata files for key datasets
@@ -1044,7 +1044,7 @@ main <- function(sql_file = NULL, excluded_measure_ids = c(34, 29, 28, 27, 26, 2
   cat("\n📁 Final Clean Workspace:\n")
   cat("   ✅ FINAL DATASET:      ", complete_file, " ⭐\n")
   cat("   ✅ FINAL METADATA:     ", paste0(tools::file_path_sans_ext(complete_file), "_metadata.txt"), "\n")
-  cat("   ✅ PATIENTS ROSTER:    ", patients_list_file, "\n")
+  cat("   ✅ SUBJECTS ROSTER:    ", subjects_list_file, "\n")
   cat("   ✅ MEASURE METADATA:   ", measure_file, "\n")
   cat("   ✅ SOURCE DATA:        ", sql_file, "\n")
   cat("   ✅ EXTRACTION SCRIPT:  extract_basic_responses.R\n")
